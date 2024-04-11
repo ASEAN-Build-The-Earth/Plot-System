@@ -24,7 +24,6 @@
 
 package com.alpsbte.plotsystem.commands;
 
-import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
@@ -35,8 +34,8 @@ import com.alpsbte.plotsystem.utils.conversion.projection.OutOfProjectionBoundsE
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -50,19 +49,18 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-
-import static net.kyori.adventure.text.Component.text;
+import java.util.logging.Level;
 
 public class CMD_Tpll extends BaseCommand {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String s, String[] args) {
-        if (!sender.hasPermission(getPermission())) {
+        if(!sender.hasPermission(getPermission())) {
             sender.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(sender, LangPaths.Message.Error.PLAYER_HAS_NO_PERMISSIONS)));
             return true;
         }
 
         if (getPlayer(sender) == null) {
-            Bukkit.getConsoleSender().sendMessage(text("This command can only be used as a player!", NamedTextColor.RED));
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "This command can only be used as a player!");
             return true;
         }
 
@@ -112,7 +110,9 @@ public class CMD_Tpll extends BaseCommand {
             // Convert terra coordinates to plot relative coordinates
             CompletableFuture<double[]> plotCoords = plot != null ? PlotUtils.convertTerraToPlotXZ(plot, terraCoords) : null;
 
-            if (plotCoords == null) {
+            Bukkit.getLogger().log(Level.INFO, "doing TPLL to coords: " + plotCoords);
+
+            if(plotCoords == null) {
                 player.sendMessage(Utils.ChatUtils.getAlertFormat(langUtil.get(sender, LangPaths.Message.Error.CANNOT_TELEPORT_OUTSIDE_PLOT)));
                 return true;
             }
@@ -137,10 +137,10 @@ public class CMD_Tpll extends BaseCommand {
             player.sendMessage(Utils.ChatUtils.getInfoFormat(langUtil.get(sender, LangPaths.Message.Info.TELEPORTING_TPLL, df.format(lat), df.format(lon))));
 
         } catch (SQLException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
+            Bukkit.getLogger().log(Level.SEVERE, "A SQL error occurred!", ex);
             player.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(sender, LangPaths.Message.Error.ERROR_OCCURRED)));
         } catch (IOException | OutOfProjectionBoundsException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("A coordinate conversion error occurred!"), ex);
+            Bukkit.getLogger().log(Level.SEVERE, "A coordinate conversion error occurred!", ex);
             player.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(sender, LangPaths.Message.Error.ERROR_OCCURRED)));
         } catch (InterruptedException | ExecutionException ex) {
             sendInfo(sender);
@@ -150,7 +150,7 @@ public class CMD_Tpll extends BaseCommand {
 
     @Override
     public String[] getNames() {
-        return new String[]{"tpll"};
+        return new String[] { "tpll" };
     }
 
     @Override
@@ -160,7 +160,7 @@ public class CMD_Tpll extends BaseCommand {
 
     @Override
     public String[] getParameter() {
-        return new String[]{"Lat", "Lon"};
+        return new String[] { "Lat", "Lon" };
     }
 
     @Override

@@ -24,7 +24,6 @@
 
 package com.alpsbte.plotsystem.core.system.plot;
 
-import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotPermissions;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
@@ -41,6 +40,7 @@ import com.sk89q.worldedit.math.BlockVector2;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.Vector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
+import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -49,8 +49,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
 
-import static net.kyori.adventure.text.Component.text;
+import static com.alpsbte.plotsystem.core.system.plot.world.PlotWorld.MAX_WORLD_HEIGHT;
+import static com.alpsbte.plotsystem.core.system.plot.world.PlotWorld.MIN_WORLD_HEIGHT;
 
 public abstract class AbstractPlot {
     public static final double PLOT_VERSION = 3;
@@ -89,7 +91,7 @@ public abstract class AbstractPlot {
     public abstract <T extends PlotWorld> T getWorld() throws SQLException;
 
     /**
-     * @return the outline of the plot which contains all corner points of the polygon
+     *  @return the outline of the plot which contains all corner points of the polygon
      */
     public abstract List<BlockVector2> getOutline() throws SQLException, IOException;
 
@@ -101,7 +103,6 @@ public abstract class AbstractPlot {
 
     /**
      * Sets the last activity to the current date and time
-     *
      * @param setNull if true, set last activity to null
      * @throws SQLException SQL database exception
      */
@@ -113,7 +114,6 @@ public abstract class AbstractPlot {
 
     /**
      * Returns the plot type the player has selected when creating the plot
-     *
      * @return the plot type
      * @throws SQLException SQL database exception
      */
@@ -134,30 +134,29 @@ public abstract class AbstractPlot {
     public abstract File getEnvironmentSchematic();
 
 
+
     /**
      * Returns geographic coordinates in numeric format
-     *
      * @return WG84 EPSG:4979 coordinates as double array {lon,lat} in degrees
-     * @throws IOException fails to load schematic file
      * @see com.alpsbte.plotsystem.utils.conversion.CoordinateConversion#convertToGeo(double, double)
+     * @throws IOException fails to load schematic file
      */
     public String getGeoCoordinates() throws IOException {
         // Convert MC coordinates to geo coordinates
         BlockVector3 mcCoordinates = getCoordinates();
         try {
-            return CoordinateConversion.formatGeoCoordinatesNumeric(CoordinateConversion.convertToGeo(mcCoordinates.x(), mcCoordinates.z()));
+            return CoordinateConversion.formatGeoCoordinatesNumeric(CoordinateConversion.convertToGeo(mcCoordinates.getX(), mcCoordinates.getZ()));
         } catch (OutOfProjectionBoundsException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("Could not convert MC coordinates to geo coordinates!"), ex);
+            Bukkit.getLogger().log(Level.SEVERE, "Could not convert MC coordinates to geo coordinates!", ex);
         }
         return null;
     }
 
     /**
      * Returns in-game Minecraft coordinates on a Terra121 world
-     *
      * @return the in-game coordinates (x, z)
-     * @throws IOException fails to load schematic file
      * @see com.alpsbte.plotsystem.utils.conversion.CoordinateConversion#convertFromGeo(double, double)
+     * @throws IOException fails to load schematic file
      */
     public BlockVector3 getCoordinates() throws IOException {
         Clipboard clipboard = FaweAPI.load(getOutlinesSchematic());
@@ -170,10 +169,13 @@ public abstract class AbstractPlot {
             Clipboard clipboard = FaweAPI.load(getOutlinesSchematic());
             if (clipboard != null) {
                 Vector3 clipboardCenter = clipboard.getRegion().getCenter();
-                return BlockVector3.at(clipboardCenter.x(), this.getWorld().getPlotHeightCentered(), clipboardCenter.z());
+
+                Bukkit.getLogger().log(Level.INFO, "Loading Clipboard Center at: " + BlockVector3.at(clipboardCenter.getX(), this.getWorld().getPlotHeightCentered(), clipboardCenter.getZ()));
+
+                return BlockVector3.at(clipboardCenter.getX(), this.getWorld().getPlotHeightCentered(), clipboardCenter.getZ());
             }
         } catch (IOException | SQLException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("Failed to load schematic file to clipboard!"), ex);
+            Bukkit.getLogger().log(Level.SEVERE, "Failed to load schematic file to clipboard!", ex);
         }
         return null;
     }
@@ -191,7 +193,7 @@ public abstract class AbstractPlot {
     }
 
     public String getGoogleMapsLink() throws IOException {
-        return "https://www.google.com/maps/place/" + getGeoCoordinates();
+        return "https://www.google.com/maps/place/"+ getGeoCoordinates();
     }
 
     public String getGoogleEarthLink() throws IOException {
@@ -219,13 +221,13 @@ public abstract class AbstractPlot {
      * @return the outline of the polygon with one point per Block
      */
     public final List<BlockVector2> getBlockOutline() throws SQLException, IOException {
-        if (this.blockOutline != null)
+        if(this.blockOutline != null)
             return this.blockOutline;
 
         List<BlockVector2> points = new ArrayList<>();
         List<BlockVector2> outline = getOutline();
 
-        for (int i = 0; i < outline.size() - 1; i++) {
+        for(int i = 0; i < outline.size() - 1; i++){
             BlockVector2 b1 = outline.get(i);
             BlockVector2 b2 = outline.get(i + 1);
             int distance = (int) b1.distance(b2);
