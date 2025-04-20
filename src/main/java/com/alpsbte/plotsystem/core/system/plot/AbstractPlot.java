@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 
 import static net.kyori.adventure.text.Component.text;
@@ -65,6 +66,8 @@ public abstract class AbstractPlot {
 
     protected List<BlockVector2> outline;
     protected List<BlockVector2> blockOutline;
+    protected List<BlockVector2> shiftedOutline;
+
 
     public AbstractPlot(int id) {
         this.ID = id;
@@ -170,7 +173,7 @@ public abstract class AbstractPlot {
             Clipboard clipboard = FaweAPI.load(getOutlinesSchematic());
             if (clipboard != null) {
                 Vector3 clipboardCenter = clipboard.getRegion().getCenter();
-                return BlockVector3.at(clipboardCenter.x(), this.getWorld().getPlotHeightCentered(), clipboardCenter.z());
+                return BlockVector3.at(clipboardCenter.getX(), this.getWorld().getPlotHeightCentered(), clipboardCenter.getZ());
             }
         } catch (IOException | SQLException ex) {
             PlotSystem.getPlugin().getComponentLogger().error(text("Failed to load schematic file to clipboard!"), ex);
@@ -213,6 +216,22 @@ public abstract class AbstractPlot {
         }
         this.outline = locations;
         return locations;
+    }
+
+    public final List<BlockVector2> getShiftedOutline() throws SQLException, IOException {
+        if(this.shiftedOutline != null)
+            return this.shiftedOutline;
+
+        List<BlockVector2> outline = getOutline();
+        List<BlockVector2> shiftedOutlines = new LinkedList<>(outline);
+
+        BlockVector2 center = PlotUtils.getCenterFromOutline(outline);
+        for(int i = 0; i < shiftedOutlines.size(); i++)
+            shiftedOutlines.set(i, BlockVector2.at(outline.get(i).getX() - center.getX(), outline.get(i).getZ() - center.getZ()));
+
+
+        this.shiftedOutline = shiftedOutlines;
+        return shiftedOutline;
     }
 
     /**

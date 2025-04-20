@@ -28,6 +28,7 @@ import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.TutorialPlot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.CityPlotWorld;
@@ -50,6 +51,7 @@ import com.sk89q.worldedit.function.mask.Mask;
 import com.sk89q.worldedit.function.mask.RegionMask;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.math.BlockVector2;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.Vector2;
 import com.sk89q.worldedit.regions.CylinderRegion;
@@ -178,15 +180,18 @@ public abstract class AbstractPlotGenerator {
     protected void createPlotProtection() throws StorageException, SQLException, IOException {
         RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world.getBukkitWorld()));
+        List<BlockVector2> plotOutlines = plot instanceof TutorialPlot ? plot.getOutline() : plot.getShiftedOutline();
 
         if (regionManager != null) {
             // Create build region for plot from the outline of the plot
-            ProtectedRegion protectedBuildRegion = new ProtectedPolygonalRegion(world.getRegionName(), plot.getOutline(), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+            ProtectedRegion protectedBuildRegion = new ProtectedPolygonalRegion(world.getRegionName(), plotOutlines, PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedBuildRegion.setPriority(100);
+
+            PlotSystem.getPlugin().getComponentLogger().info("Configured Plot outlines protection to: {} {}", protectedBuildRegion.getPoints(), protectedBuildRegion);
 
             // Create protected plot region for plot
             World weWorld = new BukkitWorld(world.getBukkitWorld());
-            CylinderRegion cylinderRegion = new CylinderRegion(weWorld, plot.getCenter(), Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+            CylinderRegion cylinderRegion = new CylinderRegion(weWorld, BlockVector3.at(0, plot.getCenter().getY(), 0), Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             ProtectedRegion protectedRegion = new ProtectedPolygonalRegion(world.getRegionName() + "-1", cylinderRegion.polygonize(-1), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedRegion.setPriority(50);
 
@@ -305,7 +310,10 @@ public abstract class AbstractPlotGenerator {
             World weWorld = new BukkitWorld(world.getBukkitWorld());
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
                 if (clearArea) {
-                    Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, world.getPlot().getOutline(), 0, PlotWorld.MAX_WORLD_HEIGHT);
+                    Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld,  world.getPlot().getShiftedOutline(), 0, PlotWorld.MAX_WORLD_HEIGHT);
+
+                    PlotSystem.getPlugin().getComponentLogger().info("Clearing plot region at: {}", polyRegion);
+
                     editSession.setMask(new RegionMask(polyRegion));
                     editSession.setBlocks((Region) polyRegion, Objects.requireNonNull(BlockTypes.AIR).getDefaultState());
                 }
@@ -315,7 +323,7 @@ public abstract class AbstractPlotGenerator {
                 Clipboard clipboard = FaweAPI.load(schematicFile);
                 Operation clipboardHolder = new ClipboardHolder(clipboard)
                         .createPaste(editSession)
-                        .to(BlockVector3.at(world.getPlot().getCenter().x(), world.getPlotHeight(), world.getPlot().getCenter().z()))
+                        .to(BlockVector3.at(0, world.getPlotHeight(), 0))
                         .build();
                 Operations.complete(clipboardHolder);
             }

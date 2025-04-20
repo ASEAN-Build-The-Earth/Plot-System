@@ -117,6 +117,7 @@ public class PlotTypeMenu extends AbstractMenu {
             reloadMenuAsync();
         }));
 
+        // TODO: City project will NOT work correctly
         getMenu().getSlot(15).setClickHandler(((clickPlayer, clickInformation) -> {
             builder.setPlotTypeSetting(PlotType.CITY_INSPIRATION_MODE);
             getMenuPlayer().playSound(getMenuPlayer().getLocation(), Utils.SoundUtils.DONE_SOUND, 1f, 1f);

@@ -35,6 +35,7 @@ import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.regions.Polygonal2DRegion;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
@@ -128,7 +129,7 @@ public class PlotWorld implements IWorld {
     @Override
     public boolean teleportPlayer(@NotNull Player player) {
         if (loadWorld() && plot != null) {
-            player.teleport(getSpawnPoint(plot instanceof TutorialPlot ? null : plot.getCenter()));
+            player.teleport(getSpawnPoint(plot instanceof TutorialPlot ? null : BlockVector3.at(0, plot.getCenter().getY(), 0)));
             return true;
         } else PlotSystem.getPlugin().getComponentLogger().warn(text("Could not teleport player " + player.getName() + " to world " + worldName + "!"));
         return false;

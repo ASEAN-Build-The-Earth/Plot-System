@@ -71,9 +71,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.bukkit.util.BlockVector;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -203,10 +205,18 @@ public final class PlotUtils {
         Clipboard clipboard = Objects.requireNonNull(ClipboardFormats.findByFile(plot.getOutlinesSchematic())).load(plot.getOutlinesSchematic());
         if (clipboard != null) {
             CuboidRegion cuboidRegion = getPlotAsRegion(plot);
+            PlotSystem.getPlugin().getComponentLogger().info("Getting Plot region for saving from: {}", cuboidRegion);
 
             if (cuboidRegion != null) {
+                BlockVector3 plotCenter = plot.getCenter();
+
                 // Get plot outline
-                List<BlockVector2> plotOutlines = plot.getOutline();
+                List<BlockVector2> plotOutlines = plot.getShiftedOutline();
+
+                // Shift schematic region to the force (0, 0) paste
+                cuboidRegion.shift(BlockVector3.at(-plotCenter.x(), 0, -plotCenter.z()));
+
+                PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion);
 
                 // Load finished plot region as cuboid region
                 if (plot.getWorld().loadWorld()) {
@@ -255,7 +265,8 @@ public final class PlotUtils {
 
         try (Clipboard cb = new BlockArrayClipboard(region)) {
             if (plot.getVersion() >= 3) {
-                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), (double) plot.getCenter().z()));
+                // TODO: if case for city project plot to not have (0, 0) center
+                cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), (double) 0));
             } else {
                 BlockVector3 terraCenter = plot.getCoordinates();
                 cb.setOrigin(BlockVector3.at(
@@ -292,8 +303,8 @@ public final class PlotUtils {
 
                     // Add additional plot sizes to relative plot schematic coordinates
                     double[] plotCoords = {
-                            schematicCoords[0] + plotRegion.getMinimumPoint().x(),
-                            schematicCoords[1] + plotRegion.getMinimumPoint().z()
+                            schematicCoords[0] + plotRegion.getMinimumPoint().x() - plot.getCenter().x(),
+                            schematicCoords[1] + plotRegion.getMinimumPoint().z() - plot.getCenter().z()
                     };
 
                     // Return coordinates if they are in the schematic plot region
@@ -306,6 +317,24 @@ public final class PlotUtils {
         }
 
         return null;
+    }
+
+    public static BlockVector2 getCenterFromOutline(List<BlockVector2> points) {
+        int minX = points.getFirst().x();
+        int minZ = points.getFirst().z();
+        int maxX = points.getFirst().x();
+        int maxZ = points.getFirst().z();
+
+        for (BlockVector2 v : points) {
+            int x = v.x();
+            int z = v.z();
+            if (x < minX) minX = x;
+            if (z < minZ) minZ = z;
+            if (x > maxX) maxX = x;
+            if (z > maxZ) maxZ = z;
+        }
+        Vector3 center = BlockVector2.at(minX, minZ).add(BlockVector2.at(maxX, maxZ)).toVector3().divide(2);
+        return BlockVector2.at(center.x(), center.z());
     }
 
     public static void checkPlotsForLastActivity() {
@@ -595,13 +624,16 @@ public final class PlotUtils {
                         }
 
                         List<BlockVector2> points = plot.getBlockOutline();
+                        BlockVector2 center = getCenterFromOutline(points);
 
-                        for (BlockVector2 point : points)
+                        for (BlockVector2 point : points) {
+                            BlockVector2 shiftedPoint = BlockVector2.at(point.x() - center.x(), point.z() - center.z());
+
                             if (point.distanceSq(playerPos2D) < 50 * 50) {
                                 if (!particleAPIEnabled) {
-                                    player.spawnParticle(Particle.FLAME, point.x(), player.getLocation().getY() + 1, point.z(), 1, 0.0, 0.0, 0.0, 0);
+                                    player.spawnParticle(Particle.FLAME, shiftedPoint.x(), player.getLocation().getY() + 1, shiftedPoint.z(), 1, 0.0, 0.0, 0.0, 0);
                                 } else {
-                                    Location loc = new Location(player.getWorld(), point.x(), player.getLocation().getY() + 1, point.z());
+                                    Location loc = new Location(player.getWorld(), shiftedPoint.x(), player.getLocation().getY() + 1, shiftedPoint.z());
                                     // create a particle packet
                                     Object packet = particles.FLAME().packet(true, loc);
 
@@ -609,6 +641,7 @@ public final class PlotUtils {
                                     particles.sendPacket(player, packet);
                                 }
                             }
+                        }
                     }
                 }
             } catch (SQLException | IOException ex) {
