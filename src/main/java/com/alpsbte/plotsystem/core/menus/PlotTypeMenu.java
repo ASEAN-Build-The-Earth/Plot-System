@@ -65,7 +65,7 @@ public class PlotTypeMenu extends AbstractMenu {
                 new ItemBuilder(AlpsHeadUtils.getCustomHead(CustomHeads.FOCUS_MODE_BUTTON.getId()))
                         .setName(text(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuTitle.SELECT_FOCUS_MODE), GOLD, BOLD))
                         .setLore(new LoreBuilder()
-                                .addLine(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SELECT_FOCUS_MODE))
+                                .addLine(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SELECT_FOCUS_MODE), true)
                                 .build())
                         .setEnchanted(builder.getPlotTypeSetting().getId() == PlotType.FOCUS_MODE.getId())
                         .build());
@@ -74,7 +74,7 @@ public class PlotTypeMenu extends AbstractMenu {
                 new ItemBuilder(Material.DARK_OAK_SAPLING, 1)
                         .setName(text(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuTitle.SELECT_INSPIRATION_MODE), GOLD, BOLD))
                         .setLore(new LoreBuilder()
-                                .addLines(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SELECT_INSPIRATION_MODE))
+                                .addLine(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SELECT_INSPIRATION_MODE), true)
                                 .build())
                         .setEnchanted(builder.getPlotTypeSetting().getId() == PlotType.LOCAL_INSPIRATION_MODE.getId())
                         .build());
@@ -82,19 +82,19 @@ public class PlotTypeMenu extends AbstractMenu {
         getMenu().getSlot(15).setItem(
                 new ItemBuilder(AlpsHeadUtils.getCustomHead(CustomHeads.CITY_INSPIRATION_MODE_BUTTON.getId()))
                         .setName(text(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuTitle.SELECT_CITY_INSPIRATION_MODE), GOLD, BOLD)
-                                .append(text(" [", DARK_GRAY).append(text("WORK IN PROGRESS", RED).append(text("]", DARK_GRAY))))) // temporary BETA tag
+                                .append(text(" [", DARK_GRAY).append(text("BETA", RED).append(text("]", DARK_GRAY))))) // temporary BETA tag
                         .setLore(new LoreBuilder()
-                                .addLines(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SELECT_CITY_INSPIRATION_MODE))
+                                .addLine(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SELECT_CITY_INSPIRATION_MODE), true)
                                 .build())
                         .setEnchanted(builder.getPlotTypeSetting().getId() == PlotType.CITY_INSPIRATION_MODE.getId())
                         .build());
 
         // Set selected glass pane
         int selectedPlotTypeSlot = 13;
-        if(builder.getPlotTypeSetting() == PlotType.FOCUS_MODE)
+        if (builder.getPlotTypeSetting() == PlotType.FOCUS_MODE)
             selectedPlotTypeSlot = 11;
-        // if(builder.getPlotTypeSetting() == PlotType.CITY_INSPIRATION_MODE)
-        //    selectedPlotTypeSlot = 15;
+        if (builder.getPlotTypeSetting() == PlotType.CITY_INSPIRATION_MODE)
+            selectedPlotTypeSlot = 15;
         getMenu().getSlot(selectedPlotTypeSlot - 9).setItem(new ItemBuilder(Material.LIME_STAINED_GLASS_PANE, 1).setName(empty()).build());
 
 
@@ -117,10 +117,10 @@ public class PlotTypeMenu extends AbstractMenu {
             reloadMenuAsync();
         }));
 
-        // WORK IN PROGRESS: Disabled city project of type
+        // TODO: City project will NOT work correctly
         getMenu().getSlot(15).setClickHandler(((clickPlayer, clickInformation) -> {
-            // builder.setPlotTypeSetting(PlotType.CITY_INSPIRATION_MODE);
-            getMenuPlayer().playSound(getMenuPlayer().getLocation(), Utils.SoundUtils.ERROR_SOUND, 1f, 1f);
+            builder.setPlotTypeSetting(PlotType.CITY_INSPIRATION_MODE);
+            getMenuPlayer().playSound(getMenuPlayer().getLocation(), Utils.SoundUtils.DONE_SOUND, 1f, 1f);
             reloadMenuAsync();
         }));
 

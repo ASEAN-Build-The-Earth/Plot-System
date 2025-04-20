@@ -51,7 +51,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Locale;
 
 import static net.kyori.adventure.text.Component.text;
