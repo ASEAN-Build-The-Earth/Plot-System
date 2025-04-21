@@ -39,6 +39,8 @@ import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.utils.ShortLink;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Status;
+import com.alpsbte.plotsystem.utils.conversion.CoordinateConversion;
+import com.alpsbte.plotsystem.utils.io.ConfigUtil;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.FTPManager;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
@@ -71,11 +73,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.bukkit.util.BlockVector;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -205,18 +205,21 @@ public final class PlotUtils {
         Clipboard clipboard = Objects.requireNonNull(ClipboardFormats.findByFile(plot.getOutlinesSchematic())).load(plot.getOutlinesSchematic());
         if (clipboard != null) {
             CuboidRegion cuboidRegion = getPlotAsRegion(plot);
-            PlotSystem.getPlugin().getComponentLogger().info("Getting Plot region for saving from: {}", cuboidRegion);
 
             if (cuboidRegion != null) {
                 BlockVector3 plotCenter = plot.getCenter();
 
+                PlotSystem.getPlugin().getComponentLogger().info("Getting Plot region for saving from: {}", cuboidRegion.getCenter());
+
                 // Get plot outline
-                List<BlockVector2> plotOutlines = plot.getShiftedOutline();
+                List<BlockVector2> plotOutlines = isPlotOutlineShifted(plot)? plot.getShiftedOutline() : plot.getOutline();
 
                 // Shift schematic region to the force (0, 0) paste
-                cuboidRegion.shift(BlockVector3.at(-plotCenter.x(), 0, -plotCenter.z()));
+                if(isPlotOutlineShifted(plot)) {
+                    cuboidRegion.shift(BlockVector3.at(-plotCenter.x(), 0, -plotCenter.z()));
 
-                PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion);
+                    PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion.getCenter());
+                }
 
                 // Load finished plot region as cuboid region
                 if (plot.getWorld().loadWorld()) {
@@ -264,9 +267,11 @@ public final class PlotUtils {
         }
 
         try (Clipboard cb = new BlockArrayClipboard(region)) {
-            if (plot.getVersion() >= 3) {
-                // TODO: if case for city project plot to not have (0, 0) center
+            if(isPlotOutlineShifted(plot)) {
                 cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), (double) 0));
+            }
+            else if (plot.getVersion() >= 3) {
+                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), (double) plot.getCenter().y()));
             } else {
                 BlockVector3 terraCenter = plot.getCoordinates();
                 cb.setOrigin(BlockVector3.at(
@@ -303,9 +308,26 @@ public final class PlotUtils {
 
                     // Add additional plot sizes to relative plot schematic coordinates
                     double[] plotCoords = {
-                            schematicCoords[0] + plotRegion.getMinimumPoint().x() - plot.getCenter().x(),
-                            schematicCoords[1] + plotRegion.getMinimumPoint().z() - plot.getCenter().z()
+                            schematicCoords[0] + plotRegion.getMinimumPoint().x(),
+                            schematicCoords[1] + plotRegion.getMinimumPoint().z()
                     };
+
+                    // Tutorial plot does not have global terra server offsets
+                    if(plot instanceof TutorialPlot) {
+                        double[] terraOffset = CoordinateConversion.getTerraOffset();
+
+                        plotCoords[0] -= terraOffset[0];
+                        plotCoords[1] -= terraOffset[1];
+                    }
+
+                    // Cancel out coordinates by itself if shifted
+                    if(PlotUtils.isPlotOutlineShifted(plot)) {
+                        // Shift the plot back to original coordinates
+                        BlockVector2 center = plot.getBoundingBoxCenter();
+
+                        plotCoords[0] -= center.x();
+                        plotCoords[1] -= center.z();
+                    }
 
                     // Return coordinates if they are in the schematic plot region
                     ProtectedRegion protectedPlotRegion = plot.getWorld().getProtectedRegion() != null ? plot.getWorld().getProtectedRegion() : plot.getWorld().getProtectedBuildRegion();
@@ -319,22 +341,43 @@ public final class PlotUtils {
         return null;
     }
 
-    public static BlockVector2 getCenterFromOutline(List<BlockVector2> points) {
-        int minX = points.getFirst().x();
-        int minZ = points.getFirst().z();
-        int maxX = points.getFirst().x();
-        int maxZ = points.getFirst().z();
+    /**
+     * Plot can be configured to be shifted to coordinates (0,0) upon generation; which includes: <ul>
+     *     <li>Tutorial plot with version >= 2.</li>
+     *     <li>Plot that shifting is explicitly enabled in the configuration.</li>
+     *     <li>The plot version >= required version for shifting to be enabled.</li>
+     * </ul>
+     * NOTE: Shifting is skipped for plots in City Inspiration Mode.
+     *
+     * @param plot The plot to check.
+     * @return {@code true} if the plot will be shifted to (0,0) upon generation.
+     */
+    public static boolean isPlotOutlineShifted(@NotNull AbstractPlot plot) {
+        boolean enabled = PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.PLOT_SHIFTING_ENABLED, false);
+        int requiredVer = PlotSystem.getPlugin().getConfig().getInt(ConfigPaths.PLOT_SHIFTING_VERSION, 4);
+        double tutorialVersion = ConfigUtil.getTutorialInstance().getBeginnerTutorial().getVersion();
 
-        for (BlockVector2 v : points) {
-            int x = v.x();
-            int z = v.z();
-            if (x < minX) minX = x;
-            if (z < minZ) minZ = z;
-            if (x > maxX) maxX = x;
-            if (z > maxZ) maxZ = z;
+        // Tutorial version >= 2 has the shifting supports.
+        if(plot instanceof TutorialPlot) return tutorialVersion >= 2;
+
+        // Requires configured setting to be enabled
+        if (!enabled || plot.getVersion() < requiredVer) return false;
+
+        // City Inspiration Mode won't work with plot shifting
+        try {
+            return plot.getPlotType() != PlotType.CITY_INSPIRATION_MODE;
+        } catch (SQLException ex) {
+            PlotSystem.getPlugin().getComponentLogger().warn(text("SQL error occurred trying to check for plot outline, plot may not appear correctly in game."));
+            return true;
         }
-        Vector3 center = BlockVector2.at(minX, minZ).add(BlockVector2.at(maxX, maxZ)).toVector3().divide(2);
-        return BlockVector2.at(center.x(), center.z());
+    }
+
+    /**
+     * @param world The plot world to check.
+     * @return {@link #isPlotOutlineShifted(AbstractPlot)}
+     */
+    public static boolean isPlotOutlineShifted(@NotNull PlotWorld world) {
+        return isPlotOutlineShifted(world.getPlot());
     }
 
     public static void checkPlotsForLastActivity() {
@@ -624,16 +667,16 @@ public final class PlotUtils {
                         }
 
                         List<BlockVector2> points = plot.getBlockOutline();
-                        BlockVector2 center = getCenterFromOutline(points);
+                        BlockVector2 center = plot.getBoundingBoxCenter();
 
                         for (BlockVector2 point : points) {
-                            BlockVector2 shiftedPoint = BlockVector2.at(point.x() - center.x(), point.z() - center.z());
+                            BlockVector2 particle = isPlotOutlineShifted(plot)? BlockVector2.at(point.x() - center.x(), point.z() - center.z()) : point;
 
                             if (point.distanceSq(playerPos2D) < 50 * 50) {
                                 if (!particleAPIEnabled) {
-                                    player.spawnParticle(Particle.FLAME, shiftedPoint.x(), player.getLocation().getY() + 1, shiftedPoint.z(), 1, 0.0, 0.0, 0.0, 0);
+                                    player.spawnParticle(Particle.FLAME, particle.x(), player.getLocation().getY() + 1, particle.z(), 1, 0.0, 0.0, 0.0, 0);
                                 } else {
-                                    Location loc = new Location(player.getWorld(), shiftedPoint.x(), player.getLocation().getY() + 1, shiftedPoint.z());
+                                    Location loc = new Location(player.getWorld(), particle.x(), player.getLocation().getY() + 1, particle.z());
                                     // create a particle packet
                                     Object packet = particles.FLAME().packet(true, loc);
 

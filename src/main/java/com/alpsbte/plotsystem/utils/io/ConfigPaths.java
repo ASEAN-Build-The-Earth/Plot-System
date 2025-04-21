@@ -38,6 +38,17 @@ public abstract class ConfigPaths {
     public static final String SYNC_FTP_FILES_ENABLE = SYNC_FTP_FILES + "sff-enable";
     public static final String SYNC_FTP_FILES_INTERVAL = SYNC_FTP_FILES + "sync-interval";
 
+    // Coordinates Options
+    private static final String COORDINATES_OPTIONS = "coordinates-options.";
+
+    private static final String TERRA_OFFSET = COORDINATES_OPTIONS + "terra-offset.";
+    public static final String TERRA_OFFSET_X = TERRA_OFFSET + "offset-x";
+    public static final String TERRA_OFFSET_Z = TERRA_OFFSET + "offset-z";
+
+    private static final String PLOT_SHIFTING = COORDINATES_OPTIONS + "plot-shifting.";
+    public static final String PLOT_SHIFTING_ENABLED = PLOT_SHIFTING + "enabled";
+    public static final String PLOT_SHIFTING_VERSION = PLOT_SHIFTING + "required-version";
+
 
     // Database
     private static final String DATABASE = "database.";
