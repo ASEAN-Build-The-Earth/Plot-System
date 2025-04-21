@@ -85,4 +85,4 @@ beginner:
     - '-7.0;15.0;3.0;minecraft:white_banner'
     - '-7.0;16.0;3.0;minecraft:quartz_slab[type=top]'
 
-config-version: 1.1
+config-version: 2.0

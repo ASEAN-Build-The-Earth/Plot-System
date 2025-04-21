@@ -36,6 +36,22 @@ inactivity-interval: 14
 enable-group-support: true
 
 # -----------------------------------------------------
+# | Coordinates Options
+# | [terra-offset]  -> The terra server coordinates offset.
+# | [plot-shifting] -> Enables shifting of single-plot worlds so the plot is positioned at (0, 0).
+# |                 Only applies to plots with a version >= the required version.
+# |                 Recommended for bedrock coordinates support.
+# | NOTE: Shifting is skipped for plots in City Inspiration Mode.
+# -----------------------------------------------------
+coordinates-options:
+  terra-offset:
+    offset-x: 0
+    offset-z: 0
+  plot-shifting:
+    enabled: false
+    required-version: 4
+
+# -----------------------------------------------------
 # | Supported databases: MariaDB & MySQL
 # -----------------------------------------------------
 database:

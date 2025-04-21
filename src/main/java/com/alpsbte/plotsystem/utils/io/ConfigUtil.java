@@ -52,7 +52,7 @@ public class ConfigUtil {
 
         if (tutorialConfigUtilInstance == null) {
             tutorialConfigUtilInstance = new TutorialConfigurationUtil(new ConfigurationUtil.ConfigFile[]{
-                    new TutorialConfigurationUtil.ConfigFile(Paths.get("tutorial", "tutorial_beginner.yml"), 1.1, false)
+                    new TutorialConfigurationUtil.ConfigFile(Paths.get("tutorial", "tutorial_beginner.yml"), 2.0, false)
             });
         }
     }

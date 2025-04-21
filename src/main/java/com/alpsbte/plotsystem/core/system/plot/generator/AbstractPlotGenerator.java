@@ -28,7 +28,6 @@ import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
-import com.alpsbte.plotsystem.core.system.plot.TutorialPlot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.CityPlotWorld;
@@ -180,18 +179,24 @@ public abstract class AbstractPlotGenerator {
     protected void createPlotProtection() throws StorageException, SQLException, IOException {
         RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world.getBukkitWorld()));
-        List<BlockVector2> plotOutlines = plot instanceof TutorialPlot ? plot.getOutline() : plot.getShiftedOutline();
+
+        // Tutorial plots and plot with normal terra coordinates does not get shift.
+        boolean isShiftedPlot = PlotUtils.isPlotOutlineShifted(plot);
+
+        List<BlockVector2> plotOutlines = isShiftedPlot ? plot.getShiftedOutline() : plot.getOutline();
 
         if (regionManager != null) {
             // Create build region for plot from the outline of the plot
             ProtectedRegion protectedBuildRegion = new ProtectedPolygonalRegion(world.getRegionName(), plotOutlines, PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedBuildRegion.setPriority(100);
 
-            PlotSystem.getPlugin().getComponentLogger().info("Configured Plot outlines protection to: {} {}", protectedBuildRegion.getPoints(), protectedBuildRegion);
-
             // Create protected plot region for plot
             World weWorld = new BukkitWorld(world.getBukkitWorld());
-            CylinderRegion cylinderRegion = new CylinderRegion(weWorld, BlockVector3.at(0, plot.getCenter().getY(), 0), Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+
+            BlockVector3 regionCenter = isShiftedPlot? BlockVector3.at(0, plot.getCenter().y(), 0) : plot.getCenter();
+
+            CylinderRegion cylinderRegion = new CylinderRegion(weWorld, regionCenter, Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+
             ProtectedRegion protectedRegion = new ProtectedPolygonalRegion(world.getRegionName() + "-1", cylinderRegion.polygonize(-1), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedRegion.setPriority(50);
 
@@ -310,9 +315,8 @@ public abstract class AbstractPlotGenerator {
             World weWorld = new BukkitWorld(world.getBukkitWorld());
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
                 if (clearArea) {
-                    Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld,  world.getPlot().getShiftedOutline(), 0, PlotWorld.MAX_WORLD_HEIGHT);
-
-                    PlotSystem.getPlugin().getComponentLogger().info("Clearing plot region at: {}", polyRegion);
+                    List<BlockVector2> plotOutline = PlotUtils.isPlotOutlineShifted(world) ? world.getPlot().getShiftedOutline() : world.getPlot().getOutline();
+                    Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, plotOutline, 0, PlotWorld.MAX_WORLD_HEIGHT);
 
                     editSession.setMask(new RegionMask(polyRegion));
                     editSession.setBlocks((Region) polyRegion, Objects.requireNonNull(BlockTypes.AIR).getDefaultState());
@@ -321,9 +325,15 @@ public abstract class AbstractPlotGenerator {
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
                 if (pasteMask != null) editSession.setMask(pasteMask);
                 Clipboard clipboard = FaweAPI.load(schematicFile);
+
+                BlockVector3 plotCenter = world.getPlot().getCenter();
+                BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world)
+                    ? BlockVector3.at(0, world.getPlotHeight(), 0)
+                    : BlockVector3.at(plotCenter.x(), world.getPlotHeight(), plotCenter.z());
+
                 Operation clipboardHolder = new ClipboardHolder(clipboard)
                         .createPaste(editSession)
-                        .to(BlockVector3.at(0, world.getPlotHeight(), 0))
+                        .to(worldCenter)
                         .build();
                 Operations.complete(clipboardHolder);
             }

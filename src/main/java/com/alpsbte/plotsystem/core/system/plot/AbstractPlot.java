@@ -48,7 +48,6 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedList;
 import java.util.List;
 
 import static net.kyori.adventure.text.Component.text;
@@ -182,6 +181,38 @@ public abstract class AbstractPlot {
     }
 
     /**
+     * Remap outline points as a rectangular bounding box (minX, minZ, maxZ, maxZ)
+     * then return the center of that bounding box.
+     *
+     * @return The center point of the bounding box as a {@link BlockVector2},
+     *         will fetch for schematic center by {@link #getCenter()} if the plot does not have outline data.
+     */
+    public BlockVector2 getBoundingBoxCenter() {
+        if(this.outline == null) {
+            BlockVector3 center = getCenter();
+            return BlockVector2.at(center.x(), center.z());
+        }
+
+        int minX = this.outline.getFirst().x();
+        int minZ = this.outline.getFirst().z();
+        int maxX = this.outline.getFirst().x();
+        int maxZ = this.outline.getFirst().z();
+
+        // Determines bounding box corner
+        for (BlockVector2 v : this.outline) {
+            int x = v.x();
+            int z = v.z();
+            if (x < minX) minX = x;
+            if (z < minZ) minZ = z;
+            if (x > maxX) maxX = x;
+            if (z > maxZ) maxZ = z;
+        }
+
+        Vector3 center = BlockVector2.at(minX, minZ).add(BlockVector2.at(maxX, maxZ)).toVector3().divide(2);
+        return BlockVector2.at(center.x(), center.z());
+    }
+
+    /**
      * @return plot permission manager to add or remove build rights
      */
     public PlotPermissions getPermissions() throws SQLException {
@@ -223,11 +254,11 @@ public abstract class AbstractPlot {
             return this.shiftedOutline;
 
         List<BlockVector2> outline = getOutline();
-        List<BlockVector2> shiftedOutlines = new LinkedList<>(outline);
+        List<BlockVector2> shiftedOutlines = new ArrayList<>(outline);
 
-        BlockVector2 center = PlotUtils.getCenterFromOutline(outline);
+        BlockVector2 center = getBoundingBoxCenter();
         for(int i = 0; i < shiftedOutlines.size(); i++)
-            shiftedOutlines.set(i, BlockVector2.at(outline.get(i).getX() - center.getX(), outline.get(i).getZ() - center.getZ()));
+            shiftedOutlines.set(i, BlockVector2.at(outline.get(i).x() - center.x(), outline.get(i).z() - center.z()));
 
 
         this.shiftedOutline = shiftedOutlines;
