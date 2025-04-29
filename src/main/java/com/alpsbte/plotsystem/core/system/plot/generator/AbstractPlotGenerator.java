@@ -271,6 +271,11 @@ public abstract class AbstractPlotGenerator {
     protected void onComplete(boolean failed, boolean unloadWorld) throws SQLException {
         // Unload plot world if it is not needed anymore
         if (unloadWorld) world.unloadWorld(false);
+
+        // Called every time plot is created
+//        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+//            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotSubmitEvent(plot.getID()));
+//        }
     }
 
 
