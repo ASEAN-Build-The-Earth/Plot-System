@@ -58,6 +58,9 @@ public class CoordinateConversion {
      * @return the offset as double array {x,z}, {0,0} if not configured.
      */
     public static double[] getTerraOffset() {
+        // Plot-System does not exist, this class is initializing before its enabled.
+        if(PlotSystem.getPlugin() == null) return new double[]{0, 0};
+
         String configOffsetX = PlotSystem.getPlugin().getConfig().getString(ConfigPaths.TERRA_OFFSET_X, null);
         String configOffsetZ = PlotSystem.getPlugin().getConfig().getString(ConfigPaths.TERRA_OFFSET_Z, null);
 
