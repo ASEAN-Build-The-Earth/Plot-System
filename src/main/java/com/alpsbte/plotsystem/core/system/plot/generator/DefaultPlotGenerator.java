@@ -92,8 +92,8 @@ public class DefaultPlotGenerator extends AbstractPlotGenerator {
     }
 
     @Override
-    protected void generateOutlines(@NotNull File plotSchematic, @Nullable File environmentSchematic) throws IOException, WorldEditException, SQLException {
-        super.generateOutlines(plotSchematic, environmentSchematic);
+    protected void generateOutlines(@NotNull File plotSchematic, @Nullable File environmentSchematic, PlotType type) throws IOException, WorldEditException, SQLException {
+        super.generateOutlines(plotSchematic, environmentSchematic, type);
 
         // If the player is playing in his own world, then additionally generate the plot in the city world
         if (PlotWorld.isOnePlotWorld(world.getWorldName()) && plotVersion >= 3 && plot.getStatus() != Status.completed) {

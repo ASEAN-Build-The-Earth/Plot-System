@@ -130,7 +130,7 @@ public abstract class AbstractPlotGenerator {
                 if (plotType.hasOnePlotPerWorld() || !world.isWorldGenerated()) {
                     new PlotWorldGenerator(world.getWorldName());
                 } else if (!world.isWorldLoaded() && !world.loadWorld()) throw new Exception("Could not load world");
-                generateOutlines(plot.getOutlinesSchematic(), plot.getVersion() >= 3 ? plot.getEnvironmentSchematic() : null);
+                generateOutlines(plot.getOutlinesSchematic(), plot.getVersion() >= 3 ? plot.getEnvironmentSchematic() : null, plotType);
                 createPlotProtection();
             } catch (Exception ex) {
                 exception = ex;
@@ -164,12 +164,12 @@ public abstract class AbstractPlotGenerator {
      * @param plotSchematic        - plot schematic file
      * @param environmentSchematic - environment schematic file
      */
-    protected void generateOutlines(@NotNull File plotSchematic, @Nullable File environmentSchematic) throws IOException, WorldEditException, SQLException {
+    protected void generateOutlines(@NotNull File plotSchematic, @Nullable File environmentSchematic, PlotType type) throws IOException, WorldEditException, SQLException {
         Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
         if (plotVersion >= 3 && plotType.hasEnvironment() && environmentSchematic != null && environmentSchematic.exists()) {
-            pasteSchematic(airMask, environmentSchematic, world, false);
+            pasteSchematic(airMask, environmentSchematic, world, type, false);
         }
-        pasteSchematic(airMask, plotSchematic, world, true);
+        pasteSchematic(airMask, plotSchematic, world, type, true);
     }
 
 
@@ -181,7 +181,7 @@ public abstract class AbstractPlotGenerator {
         RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world.getBukkitWorld()));
 
         // Tutorial plots and plot with normal terra coordinates does not get shift.
-        boolean isShiftedPlot = PlotUtils.isPlotOutlineShifted(plot);
+        boolean isShiftedPlot = PlotUtils.isPlotOutlineShifted(plot, plotType);
 
         List<BlockVector2> plotOutlines = isShiftedPlot ? plot.getShiftedOutline() : plot.getOutline();
 
@@ -310,12 +310,12 @@ public abstract class AbstractPlotGenerator {
      * @param world         - world to paste in
      * @param clearArea     - clears the plot area with air before pasting
      */
-    public static void pasteSchematic(@Nullable Mask pasteMask, File schematicFile, PlotWorld world, boolean clearArea) throws IOException, WorldEditException, SQLException {
+    public static void pasteSchematic(@Nullable Mask pasteMask, File schematicFile, PlotWorld world, PlotType type, boolean clearArea) throws IOException, WorldEditException, SQLException {
         if (world.loadWorld()) {
             World weWorld = new BukkitWorld(world.getBukkitWorld());
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
                 if (clearArea) {
-                    List<BlockVector2> plotOutline = PlotUtils.isPlotOutlineShifted(world) ? world.getPlot().getShiftedOutline() : world.getPlot().getOutline();
+                    List<BlockVector2> plotOutline = PlotUtils.isPlotOutlineShifted(world, type) ? world.getPlot().getShiftedOutline() : world.getPlot().getOutline();
                     Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, plotOutline, 0, PlotWorld.MAX_WORLD_HEIGHT);
 
                     editSession.setMask(new RegionMask(polyRegion));
@@ -326,10 +326,11 @@ public abstract class AbstractPlotGenerator {
                 if (pasteMask != null) editSession.setMask(pasteMask);
                 Clipboard clipboard = FaweAPI.load(schematicFile);
 
+
                 BlockVector3 plotCenter = world.getPlot().getCenter();
-                BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world)
-                    ? BlockVector3.at(0, world.getPlotHeight(), 0)
-                    : BlockVector3.at(plotCenter.x(), world.getPlotHeight(), plotCenter.z());
+                BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world, type)
+                        ? BlockVector3.at(0, world.getPlotHeight(), 0)
+                        : BlockVector3.at(plotCenter.x(), world.getPlotHeight(), plotCenter.z());
 
                 Operation clipboardHolder = new ClipboardHolder(clipboard)
                         .createPaste(editSession)

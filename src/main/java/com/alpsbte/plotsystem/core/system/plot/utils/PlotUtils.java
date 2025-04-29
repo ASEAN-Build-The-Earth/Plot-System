@@ -243,7 +243,7 @@ public final class PlotUtils {
 
                     // If plot was created in a void world, copy the result to the city world
                     if (plot.getPlotType() != PlotType.CITY_INSPIRATION_MODE && plot.getVersion() >= 3) {
-                        AbstractPlotGenerator.pasteSchematic(null, plot.getCompletedSchematic(), new CityPlotWorld(plot), false);
+                        AbstractPlotGenerator.pasteSchematic(null, plot.getCompletedSchematic(), new CityPlotWorld(plot), plot.getPlotType(), false);
                     }
                     return true;
                 }
@@ -268,10 +268,10 @@ public final class PlotUtils {
 
         try (Clipboard cb = new BlockArrayClipboard(region)) {
             if(isPlotOutlineShifted(plot)) {
-                cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), (double) 0));
+                cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), 0));
             }
             else if (plot.getVersion() >= 3) {
-                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), (double) plot.getCenter().y()));
+                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), plot.getCenter().y()));
             } else {
                 BlockVector3 terraCenter = plot.getCoordinates();
                 cb.setOrigin(BlockVector3.at(
@@ -350,9 +350,48 @@ public final class PlotUtils {
      * NOTE: Shifting is skipped for plots in City Inspiration Mode.
      *
      * @param plot The plot to check.
+     * @param type The plot type
      * @return {@code true} if the plot will be shifted to (0,0) upon generation.
      */
+    public static boolean isPlotOutlineShifted(@NotNull AbstractPlot plot, PlotType type) {
+        // City Inspiration Mode won't work with plot shifting
+        return shouldShiftOutline(plot) && type != PlotType.CITY_INSPIRATION_MODE;
+    }
+
+    /**
+     * @param world The plot world to check.
+     * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
+     */
+    public static boolean isPlotOutlineShifted(@NotNull PlotWorld world) {
+        return isPlotOutlineShifted(world.getPlot());
+    }
+
+    /**
+     * @param world The plot world to check.
+     * @param type The plot type
+     * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
+     */
+    public static boolean isPlotOutlineShifted(@NotNull PlotWorld world, PlotType type) {
+        return isPlotOutlineShifted(world.getPlot(), type);
+    }
+
+
+    /**
+     *
+     * @param plot The plot to check.
+     * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
+     */
     public static boolean isPlotOutlineShifted(@NotNull AbstractPlot plot) {
+        try {
+            return isPlotOutlineShifted(plot, plot.getPlotType());
+        } catch (SQLException ex) {
+            PlotSystem.getPlugin().getComponentLogger().warn(text("SQL error occurred trying to check for plot outline, plot may not appear correctly in game."));
+            return shouldShiftOutline(plot);
+        }
+
+    }
+
+    private static boolean shouldShiftOutline(@NotNull AbstractPlot plot) {
         boolean enabled = PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.PLOT_SHIFTING_ENABLED, false);
         int requiredVer = PlotSystem.getPlugin().getConfig().getInt(ConfigPaths.PLOT_SHIFTING_VERSION, 4);
         double tutorialVersion = ConfigUtil.getTutorialInstance().getBeginnerTutorial().getVersion();
@@ -361,23 +400,7 @@ public final class PlotUtils {
         if(plot instanceof TutorialPlot) return tutorialVersion >= 2;
 
         // Requires configured setting to be enabled
-        if (!enabled || plot.getVersion() < requiredVer) return false;
-
-        // City Inspiration Mode won't work with plot shifting
-        try {
-            return plot.getPlotType() != PlotType.CITY_INSPIRATION_MODE;
-        } catch (SQLException ex) {
-            PlotSystem.getPlugin().getComponentLogger().warn(text("SQL error occurred trying to check for plot outline, plot may not appear correctly in game."));
-            return true;
-        }
-    }
-
-    /**
-     * @param world The plot world to check.
-     * @return {@link #isPlotOutlineShifted(AbstractPlot)}
-     */
-    public static boolean isPlotOutlineShifted(@NotNull PlotWorld world) {
-        return isPlotOutlineShifted(world.getPlot());
+        return enabled && !(plot.getVersion() < requiredVer);
     }
 
     public static void checkPlotsForLastActivity() {
@@ -496,7 +519,7 @@ public final class PlotUtils {
                             if (regionManager.hasRegion(world.getRegionName())) regionManager.removeRegion(world.getRegionName());
                             if (regionManager.hasRegion(world.getRegionName() + "-1")) regionManager.removeRegion(world.getRegionName() + "-1");
 
-                            AbstractPlotGenerator.pasteSchematic(null, plot.getOutlinesSchematic(), world, true);
+                            AbstractPlotGenerator.pasteSchematic(null, plot.getOutlinesSchematic(), world, plot.getPlotType(), true);
                         } else PlotSystem.getPlugin().getComponentLogger().warn(text("Region Manager is null!"));
 
                         playersToTeleport.forEach(p -> p.teleport(Utils.getSpawnLocation()));
