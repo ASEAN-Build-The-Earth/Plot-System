@@ -67,6 +67,8 @@ import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
+import github.tintinkung.discordps.api.events.PlotAbandonedEvent;
+import github.tintinkung.discordps.api.events.PlotSubmitEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Bukkit;
@@ -479,6 +481,10 @@ public final class PlotUtils {
                     plot.getPermissions().removeBuilderPerms(builder.getUUID());
                 }
             }
+
+            if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+                PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotSubmitEvent(plot.getID()));
+            }
         }
 
         public static void undoSubmit(@NotNull Plot plot) throws SQLException {
@@ -525,6 +531,9 @@ public final class PlotUtils {
                         playersToTeleport.forEach(p -> p.teleport(Utils.getSpawnLocation()));
                         if (plot.getWorld().isWorldLoaded()) plot.getWorld().unloadWorld(false);
                     }
+                }
+                if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+                    PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotAbandonedEvent(plot.getID()));
                 }
             } catch (SQLException | IOException | WorldEditException ex) {
                 PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getID() + "!"), ex);

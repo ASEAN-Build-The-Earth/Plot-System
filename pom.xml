@@ -132,6 +132,13 @@
             <version>2.8.12</version>
             <scope>provided</scope>
         </dependency>
+        <!-- Discord Integration -->
+        <dependency>
+            <groupId>com.github.tintinkung.discordsrv-plotsystem</groupId>
+            <artifactId>discordps-api</artifactId>
+            <version>1.0.8</version>
+            <scope>provided</scope>
+        </dependency>
         <!-- Alps Utils -->
         <dependency>
             <groupId>com.alpsbte.alpslib</groupId>

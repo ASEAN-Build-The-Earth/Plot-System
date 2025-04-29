@@ -42,6 +42,10 @@ import com.alpsbte.plotsystem.utils.items.BaseItems;
 import com.alpsbte.plotsystem.utils.items.CustomHeads;
 import com.alpsbte.plotsystem.utils.items.MenuItems;
 import com.sk89q.worldedit.WorldEditException;
+import github.tintinkung.discordps.api.events.PlotAbandonedEvent;
+import github.tintinkung.discordps.api.events.PlotApprovedEvent;
+import github.tintinkung.discordps.api.events.PlotRejectedEvent;
+import github.tintinkung.discordps.api.events.PlotSubmitEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -191,6 +195,9 @@ public class ReviewPlotMenu extends AbstractMenu {
                     } else if (totalRating == 0) {
                         plot.setStatus(Status.unfinished);
                         Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> clickPlayer.performCommand("plot abandon " + plot.getID()));
+                        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+                            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotAbandonedEvent(plot.getID()));
+                        }
                         return;
                     }
                     Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> clickPlayer.closeInventory());
@@ -224,6 +231,10 @@ public class ReviewPlotMenu extends AbstractMenu {
                         plot.getReview().setFeedbackSent(false);
                         plot.getReview().setFeedback("No Feedback");
                         plot.getPlotOwner().addCompletedBuild(1);
+
+                        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+                            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotApprovedEvent(plot.getID()));
+                        }
 
                         // Remove Plot from Owner
                         plot.getPlotOwner().removePlot(plot.getSlot());
@@ -270,6 +281,10 @@ public class ReviewPlotMenu extends AbstractMenu {
                                         plot.getPlotMembers().get(i).getName() + ", ");
                             }
                             reviewerConfirmationMessage = Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Info.PLOT_REJECTED, Integer.toString(plot.getID()), sb.toString()));
+                        }
+
+                        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+                            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotRejectedEvent(plot.getID()));
                         }
 
                         PlotUtils.Actions.undoSubmit(plot);

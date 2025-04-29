@@ -30,6 +30,8 @@ import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.utils.enums.Category;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.FTPManager;
+import github.tintinkung.discordps.api.events.PlotFeedbackEvent;
+import github.tintinkung.discordps.api.events.PlotSubmitEvent;
 import org.bukkit.Bukkit;
 
 import java.io.IOException;
@@ -45,6 +47,7 @@ import static net.kyori.adventure.text.Component.text;
 
 public class Review {
     private final int reviewID;
+    private Integer plotID = null;
 
     public Review(int reviewID) {
         this.reviewID = reviewID;
@@ -52,6 +55,7 @@ public class Review {
 
     public Review(int plotID, UUID reviewer, String rating) throws SQLException {
         this.reviewID = DatabaseConnection.getTableID("plotsystem_reviews");
+        this.plotID = plotID;
 
         DatabaseConnection.createStatement("INSERT INTO plotsystem_reviews (id, reviewer_uuid, rating, review_date, feedback) VALUES (?, ?, ?, ?, ?)")
                 .setValue(this.reviewID)
@@ -173,6 +177,11 @@ public class Review {
     public void setFeedback(String feedback) throws SQLException {
         DatabaseConnection.createStatement("UPDATE plotsystem_reviews SET feedback = ? WHERE id = ?")
                 .setValue(feedback).setValue(this.reviewID).executeUpdate();
+
+        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+            int plot = this.plotID == null? this.getPlotID() : this.plotID;
+            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotFeedbackEvent(plot, feedback));
+        }
     }
 
     public void setFeedbackSent(boolean isSent) throws SQLException {
