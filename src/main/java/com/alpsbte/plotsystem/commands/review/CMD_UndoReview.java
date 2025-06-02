@@ -33,7 +33,7 @@ import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
-import github.tintinkung.discordps.api.events.PlotSubmitEvent;
+import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotUndoReviewEvent;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -74,7 +74,7 @@ public class CMD_UndoReview extends BaseCommand {
             }
 
             if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotSubmitEvent(plot.getID()));
+                PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotUndoReviewEvent(plot.getID()));
             }
 
             Review.undoReview(plot.getReview());

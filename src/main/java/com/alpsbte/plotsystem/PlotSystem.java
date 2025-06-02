@@ -53,8 +53,8 @@ import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import de.oliver.fancynpcs.api.FancyNpcsPlugin;
-import github.tintinkung.discordps.api.DiscordPlotSystem;
-import github.tintinkung.discordps.api.DiscordPlotSystemAPI;
+import asia.buildtheearth.asean.discord.plotsystem.api.DiscordPlotSystem;
+import asia.buildtheearth.asean.discord.plotsystem.api.DiscordPlotSystemAPI;
 import net.kyori.adventure.text.Component;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
@@ -341,7 +341,7 @@ public class PlotSystem extends JavaPlugin {
         }
 
         public static boolean isDiscordPlotSystemEnabled() {
-            return plugin.getServer().getPluginManager().isPluginEnabled("DiscordPlotSystem");
+            return plugin.getServer().getPluginManager().isPluginEnabled("DiscordPlotSystem") && getDiscordPlotSystem() != null;
         }
 
         /**

@@ -38,6 +38,7 @@ import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.ConfigUtil;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
+import asia.buildtheearth.asean.discord.plotsystem.api.events.AbandonType;
 import com.fastasyncworldedit.core.FaweAPI;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
@@ -143,7 +144,7 @@ public abstract class AbstractPlotGenerator {
             }
 
             if (exception != null) {
-                PlotUtils.Actions.abandonPlot(plot);
+                PlotUtils.Actions.abandonPlot(plot, AbandonType.MANUALLY);
                 onException(exception);
             }
         }

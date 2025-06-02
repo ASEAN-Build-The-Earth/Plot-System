@@ -134,9 +134,9 @@
         </dependency>
         <!-- Discord Integration -->
         <dependency>
-            <groupId>com.github.tintinkung.discordsrv-plotsystem</groupId>
-            <artifactId>discordps-api</artifactId>
-            <version>1.0.8</version>
+            <groupId>asia.buildtheearth.asean.discord</groupId>
+            <artifactId>discord-plotsystem-api</artifactId>
+            <version>1.1.0</version>
             <scope>provided</scope>
         </dependency>
         <!-- Alps Utils -->

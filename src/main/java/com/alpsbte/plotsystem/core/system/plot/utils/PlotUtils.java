@@ -67,8 +67,7 @@ import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
-import github.tintinkung.discordps.api.events.PlotAbandonedEvent;
-import github.tintinkung.discordps.api.events.PlotSubmitEvent;
+import asia.buildtheearth.asean.discord.plotsystem.api.events.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Bukkit;
@@ -392,7 +391,7 @@ public final class PlotUtils {
                 for (Plot plot : plots) {
                     if (plot.getLastActivity() != null && plot.getLastActivity().getTime() < (new Date().getTime() - millisInDays)) {
                         Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-                            if (Actions.abandonPlot(plot)) {
+                            if (Actions.abandonPlot(plot, AbandonType.INACTIVE)) {
                                 PlotSystem.getPlugin().getComponentLogger().info(text("Abandoned plot #" + plot.getID() + " due to inactivity!"));
                             } else {
                                 PlotSystem.getPlugin().getComponentLogger().warn(text("An error occurred while abandoning plot #" + plot.getID() + " due to inactivity!"));
@@ -473,9 +472,13 @@ public final class PlotUtils {
                     plot.getPermissions().addBuilderPerms(builder.getUUID());
                 }
             }
+
+            if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
+                PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotUndoSubmitEvent(plot.getID()));
+            }
         }
 
-        public static boolean abandonPlot(@NotNull AbstractPlot plot) {
+        public static boolean abandonPlot(@NotNull AbstractPlot plot, @NotNull AbandonType type) {
             try {
                 if (plot.getWorld() instanceof OnePlotWorld) {
                     if (plot.getWorld().isWorldGenerated()) {
@@ -510,7 +513,7 @@ public final class PlotUtils {
                     }
                 }
                 if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                    PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotAbandonedEvent(plot.getID()));
+                    PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotAbandonedEvent(plot.getID(), type));
                 }
             } catch (SQLException | IOException | WorldEditException ex) {
                 PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getID() + "!"), ex);
@@ -559,7 +562,7 @@ public final class PlotUtils {
         }
 
         public static boolean deletePlot(Plot plot) {
-            if (abandonPlot(plot)) {
+            if (abandonPlot(plot, AbandonType.MANUALLY)) {
                 try {
                     CompletableFuture.runAsync(() -> {
                         try {

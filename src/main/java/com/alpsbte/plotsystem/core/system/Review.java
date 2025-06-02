@@ -30,8 +30,7 @@ import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.utils.enums.Category;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.FTPManager;
-import github.tintinkung.discordps.api.events.PlotFeedbackEvent;
-import github.tintinkung.discordps.api.events.PlotSubmitEvent;
+import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotFeedbackEvent;
 import org.bukkit.Bukkit;
 
 import java.io.IOException;

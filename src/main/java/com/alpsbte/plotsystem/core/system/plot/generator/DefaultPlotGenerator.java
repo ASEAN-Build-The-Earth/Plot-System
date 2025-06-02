@@ -37,8 +37,7 @@ import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.sk89q.worldedit.WorldEditException;
-import github.tintinkung.discordps.api.events.PlotCreateEvent;
-import github.tintinkung.discordps.api.events.PlotSubmitEvent;
+import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotCreateEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
