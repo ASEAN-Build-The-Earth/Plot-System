@@ -76,7 +76,7 @@ import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public class PlotSystem extends JavaPlugin {
-    private static final String VERSION = "4.1.3";
+    private static final String VERSION = "5.0.0";
 
     private static PlotSystem plugin;
     private CommandManager commandManager;
@@ -193,7 +193,6 @@ public class PlotSystem extends JavaPlugin {
         DecentHologramDisplay.registerPlugin(this);
         HologramRegister.init();
         PlotUtils.checkPlotsForLastActivity();
-        PlotUtils.syncPlotSchematicFiles();
         Utils.ChatUtils.checkForChatInputExpiry();
         PlotUtils.Effects.startTimer();
 
@@ -203,9 +202,6 @@ public class PlotSystem extends JavaPlugin {
             Bukkit.getConsoleSender().sendMessage(empty());
             Bukkit.getConsoleSender().sendMessage(text("Could not find Protocol-Lib! Consider installing it to avoid issues.", RED));
         }
-
-        // Cache and register custom heads
-        Bukkit.getScheduler().runTaskAsynchronously(this, Utils::registerCustomHeads);
 
         // Register tutorials
         if (getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE)) {
@@ -236,7 +232,8 @@ public class PlotSystem extends JavaPlugin {
         } else {
             // Unload plots
             for (UUID player : PlotUtils.Cache.getCachedInProgressPlots().keySet()) {
-                for (Plot plot : PlotUtils.Cache.getCachedInProgressPlots(Builder.byUUID(player))) {
+                Builder builder = Builder.byUUID(player);
+                for (Plot plot : PlotUtils.Cache.getCachedInProgressPlots(builder)) {
                     if (plot != null) plot.getWorld().unloadWorld(true);
                 }
             }
@@ -272,7 +269,6 @@ public class PlotSystem extends JavaPlugin {
     public static PlotSystem getPlugin() {
         return plugin;
     }
-
     public CommandManager getCommandManager() {
         return commandManager;
     }

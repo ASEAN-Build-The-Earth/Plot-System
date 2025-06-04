@@ -46,6 +46,7 @@ import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.function.mask.BlockTypeMask;
 import com.sk89q.worldedit.function.mask.Mask;
 import com.sk89q.worldedit.function.mask.RegionMask;
@@ -74,9 +75,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -96,8 +96,8 @@ public abstract class AbstractPlotGenerator {
      * @param plot    - plot which should be generated
      * @param builder - builder of the plot
      */
-    public AbstractPlotGenerator(@NotNull AbstractPlot plot, @NotNull Builder builder) throws SQLException {
-        this(plot, builder, builder.getPlotTypeSetting());
+    public AbstractPlotGenerator(@NotNull AbstractPlot plot, @NotNull Builder builder) {
+        this(plot, builder, builder.getPlotType());
     }
 
     /**
@@ -107,7 +107,7 @@ public abstract class AbstractPlotGenerator {
      * @param builder  - builder of the plot
      * @param plotType - type of the plot
      */
-    public AbstractPlotGenerator(@NotNull AbstractPlot plot, @NotNull Builder builder, @NotNull PlotType plotType) throws SQLException {
+    public AbstractPlotGenerator(@NotNull AbstractPlot plot, @NotNull Builder builder, @NotNull PlotType plotType) {
         this(plot, builder, plotType, plot.getVersion() <= 2 || plotType.hasOnePlotPerWorld() ? new OnePlotWorld(plot) : new CityPlotWorld((Plot) plot));
     }
 
@@ -131,17 +131,12 @@ public abstract class AbstractPlotGenerator {
                 if (plotType.hasOnePlotPerWorld() || !world.isWorldGenerated()) {
                     new PlotWorldGenerator(world.getWorldName());
                 } else if (!world.isWorldLoaded() && !world.loadWorld()) throw new Exception("Could not load world");
-                generateOutlines(plot.getOutlinesSchematic(), plot.getVersion() >= 3 ? plot.getEnvironmentSchematic() : null, plotType);
+                generateOutlines();
                 createPlotProtection();
             } catch (Exception ex) {
                 exception = ex;
             }
-
-            try {
-                this.onComplete(exception != null, false);
-            } catch (SQLException ex) {
-                exception = ex;
-            }
+            this.onComplete(exception != null, false);
 
             if (exception != null) {
                 PlotUtils.Actions.abandonPlot(plot, AbandonType.MANUALLY);
@@ -165,19 +160,21 @@ public abstract class AbstractPlotGenerator {
      * @param plotSchematic        - plot schematic file
      * @param environmentSchematic - environment schematic file
      */
-    protected void generateOutlines(@NotNull File plotSchematic, @Nullable File environmentSchematic, PlotType type) throws IOException, WorldEditException, SQLException {
-        Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
-        if (plotVersion >= 3 && plotType.hasEnvironment() && environmentSchematic != null && environmentSchematic.exists()) {
-            pasteSchematic(airMask, environmentSchematic, world, type, false);
+    protected void generateOutlines() throws IOException {
+        if (plotVersion >= 3 && plotType.hasEnvironment()) {
+            pasteSchematic(null, plot.getInitialSchematicBytes(), world, false);
+        } else {
+            Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
+            pasteSchematic(airMask, PlotUtils.getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, true);
         }
-        pasteSchematic(airMask, plotSchematic, world, type, true);
+        pasteSchematic(airMask, plotSchematic, world, true);
     }
 
 
     /**
      * Creates plot protection
      */
-    protected void createPlotProtection() throws StorageException, SQLException, IOException {
+    protected void createPlotProtection() throws StorageException {
         RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world.getBukkitWorld()));
 
@@ -267,9 +264,8 @@ public abstract class AbstractPlotGenerator {
      *
      * @param failed      - true if generation has failed
      * @param unloadWorld - try to unload world after generation
-     * @throws SQLException - caused by a database exception
      */
-    protected void onComplete(boolean failed, boolean unloadWorld) throws SQLException {
+    protected void onComplete(boolean failed, boolean unloadWorld) {
         // Unload plot world if it is not needed anymore
         if (unloadWorld) world.unloadWorld(false);
 
@@ -317,33 +313,41 @@ public abstract class AbstractPlotGenerator {
      * @param clearArea     - clears the plot area with air before pasting
      */
     public static void pasteSchematic(@Nullable Mask pasteMask, File schematicFile, PlotWorld world, PlotType type, boolean clearArea) throws IOException, WorldEditException, SQLException {
-        if (world.loadWorld()) {
-            World weWorld = new BukkitWorld(world.getBukkitWorld());
+        // load world
+        if (!world.loadWorld()) return;
+        World weWorld = new BukkitWorld(world.getBukkitWorld());
+
+        // set outline region with air
+        if (clearArea) {
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
-                if (clearArea) {
-                    List<BlockVector2> plotOutline = PlotUtils.isPlotOutlineShifted(world, type) ? world.getPlot().getShiftedOutline() : world.getPlot().getOutline();
-                    Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, plotOutline, 0, PlotWorld.MAX_WORLD_HEIGHT);
-
-                    editSession.setMask(new RegionMask(polyRegion));
-                    editSession.setBlocks((Region) polyRegion, Objects.requireNonNull(BlockTypes.AIR).getDefaultState());
-                }
+                List<BlockVector2> plotOutline = PlotUtils.isPlotOutlineShifted(world, type) ? world.getPlot().getShiftedOutline() : world.getPlot().getOutline();
+                Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, plotOutline, 0, PlotWorld.MAX_WORLD_HEIGHT);
+                editSession.setMask(new RegionMask(polyRegion));
+                editSession.setBlocks((Region) polyRegion, Objects.requireNonNull(BlockTypes.AIR).getDefaultState());
             }
-            try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
-                if (pasteMask != null) editSession.setMask(pasteMask);
-                Clipboard clipboard = FaweAPI.load(schematicFile);
+        }
 
+        // load schematic
+        Clipboard clipboard;
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(schematicFile);
+        try (ClipboardReader reader = AbstractPlot.CLIPBOARD_FORMAT.getReader(inputStream)) {
+            clipboard = reader.read();
+        }
 
-                BlockVector3 plotCenter = world.getPlot().getCenter();
-                BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world, type)
-                        ? BlockVector3.at(0, world.getPlotHeight(), 0)
-                        : BlockVector3.at(plotCenter.x(), world.getPlotHeight(), plotCenter.z());
+        // paste schematic
+        try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
+            if (pasteMask != null) editSession.setMask(pasteMask);
 
-                Operation clipboardHolder = new ClipboardHolder(clipboard)
-                        .createPaste(editSession)
-                        .to(worldCenter)
-                        .build();
-                Operations.complete(clipboardHolder);
-            }
+            BlockVector3 plotCenter = world.getPlot().getCenter();
+            BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world, type)
+                    ? BlockVector3.at(0, world.getPlotHeight(), 0)
+                    : BlockVector3.at(plotCenter.x(), world.getPlotHeight(), plotCenter.z());
+
+            Operation clipboardHolder = new ClipboardHolder(clipboard)
+                    .createPaste(editSession)
+                    .to(worldCenter)
+                    .build();
+            Operations.complete(clipboardHolder);
         }
     }
 }
