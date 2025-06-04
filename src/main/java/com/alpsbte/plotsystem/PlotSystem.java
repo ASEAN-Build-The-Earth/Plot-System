@@ -53,6 +53,8 @@ import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import de.oliver.fancynpcs.api.FancyNpcsPlugin;
+import asia.buildtheearth.asean.discord.plotsystem.api.DiscordPlotSystem;
+import asia.buildtheearth.asean.discord.plotsystem.api.DiscordPlotSystemAPI;
 import net.kyori.adventure.text.Component;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
@@ -338,6 +340,10 @@ public class PlotSystem extends JavaPlugin {
             return plugin.getServer().getPluginManager().isPluginEnabled("WorldGuardExtraFlags");
         }
 
+        public static boolean isDiscordPlotSystemEnabled() {
+            return plugin.getServer().getPluginManager().isPluginEnabled("DiscordPlotSystem") && getDiscordPlotSystem() != null;
+        }
+
         /**
          * @param worldName Name of the world
          * @return Config path for the world
@@ -379,6 +385,8 @@ public class PlotSystem extends JavaPlugin {
          * @return Protocol Lib Instance
          */
         public static ProtocolManager getProtocolManager() {return ProtocolLibrary.getProtocolManager();}
+
+        public static DiscordPlotSystem getDiscordPlotSystem() { return DiscordPlotSystemAPI.getInstance(); }
     }
 
     public static class UpdateChecker {
