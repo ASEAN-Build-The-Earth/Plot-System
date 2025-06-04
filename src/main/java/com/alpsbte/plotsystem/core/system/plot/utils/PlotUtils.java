@@ -272,7 +272,7 @@ public final class PlotUtils {
                 cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), 0));
             }
             else if (plot.getVersion() >= 3) {
-                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), plot.getCenter().y()));
+                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), plot.getCenter().z()));
             } else {
                 BlockVector3 terraCenter = plot.getCoordinates();
                 cb.setOrigin(BlockVector3.at(
