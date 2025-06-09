@@ -193,11 +193,12 @@ public abstract class AbstractPlot {
      * @return The center point of the bounding box as a {@link BlockVector2},
      *         will fetch for schematic center by {@link #getCenter()} if the plot does not have outline data.
      */
-    public BlockVector2 getBoundingBoxCenter() {
+    public BlockVector3 getBoundingBoxCenter() {
         if(this.outline == null) {
-            BlockVector3 center = getCenter();
-            return BlockVector2.at(center.x(), center.z());
+            return getCenter();
         }
+
+        PlotSystem.getPlugin().getComponentLogger().info(text("Check Outline Center: " + this.getCenter().toString()));
 
         int minX = this.outline.getFirst().x();
         int minZ = this.outline.getFirst().z();
@@ -215,7 +216,10 @@ public abstract class AbstractPlot {
         }
 
         Vector3 center = BlockVector2.at(minX, minZ).add(BlockVector2.at(maxX, maxZ)).toVector3().divide(2);
-        return BlockVector2.at(center.x(), center.z());
+
+        PlotSystem.getPlugin().getComponentLogger().info(text("Checking BoundingBox Center: " + center.toString()));
+
+        return getCenter();
     }
 
     /**
@@ -250,17 +254,16 @@ public abstract class AbstractPlot {
         return locations;
     }
 
-    public final List<BlockVector2> getShiftedOutline() throws SQLException, IOException {
+    public final List<BlockVector2> getShiftedOutline() {
         if(this.shiftedOutline != null)
             return this.shiftedOutline;
 
         List<BlockVector2> outline = getOutline();
         List<BlockVector2> shiftedOutlines = new ArrayList<>(outline);
 
-        BlockVector2 center = getBoundingBoxCenter();
-        for(int i = 0; i < shiftedOutlines.size(); i++)
+        BlockVector3 center = getCenter();
+        for(int i = 0; i < outline.size(); i++)
             shiftedOutlines.set(i, BlockVector2.at(outline.get(i).x() - center.x(), outline.get(i).z() - center.z()));
-
 
         this.shiftedOutline = shiftedOutlines;
         return shiftedOutline;

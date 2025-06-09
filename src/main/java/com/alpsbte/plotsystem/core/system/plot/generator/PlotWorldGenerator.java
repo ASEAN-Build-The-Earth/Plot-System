@@ -39,9 +39,7 @@ import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.*;
 import org.bukkit.generator.ChunkGenerator;
 
-import javax.annotation.Nonnull;
 import java.util.Objects;
-import java.util.Random;
 
 import static net.kyori.adventure.text.Component.text;
 
@@ -111,6 +109,18 @@ public class PlotWorldGenerator {
         mvWorld.setAutoLoad(false);
         mvWorld.setKeepSpawnInMemory(false);
         worldManager.saveWorldsConfig();
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Generated PlotWorld at the spawn location: " + bukkitWorld.getSpawnLocation())
+        );
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Spawn location loaded: " + bukkitWorld.getChunkAt(bukkitWorld.getSpawnLocation()).isLoaded())
+        );
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Spawn location generated: " + bukkitWorld.getChunkAt(bukkitWorld.getSpawnLocation()).isGenerated())
+        );
     }
 
     protected void createGlobalProtection() throws StorageException {
