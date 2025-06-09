@@ -181,8 +181,8 @@ public class ReviewProvider {
         if (!result) return null;
 
         // Create Review
-        String query = "INSERT INTO plot_review (plot_id, rating, score, split_score, reviewed_by) " +
-                "VALUES (?, ?, ?, ?, ?);";
+        String query = "INSERT INTO plot_review (plot_id, rating, score, reviewed_by) " +
+                "VALUES (?, ?, ?, ?);";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, plot.getID());
