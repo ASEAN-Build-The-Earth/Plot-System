@@ -24,7 +24,6 @@
 
 package com.alpsbte.plotsystem.commands.plot;
 
-import asia.buildtheearth.asean.discord.plotsystem.api.events.AbandonType;
 import com.alpsbte.alpslib.utils.AlpsUtils;
 import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.commands.BaseCommand;
@@ -34,6 +33,7 @@ import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
@@ -92,7 +92,7 @@ public class CMD_Plot_Abandon extends SubCommand {
             }
 
             Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-                if (PlotUtils.Actions.abandonPlot(plot, AbandonType.MANUALLY)) {
+                if (PlotUtils.Actions.abandonPlot(plot, DiscordUtil.AbandonType.MANUALLY)) {
                     sender.sendMessage(Utils.ChatUtils.getInfoFormat(langUtil.get(sender, LangPaths.Message.Info.ABANDONED_PLOT, plot.getID() + "")));
                     player.playSound(player.getLocation(), Utils.SoundUtils.ABANDON_PLOT_SOUND, 1, 1);
                 }

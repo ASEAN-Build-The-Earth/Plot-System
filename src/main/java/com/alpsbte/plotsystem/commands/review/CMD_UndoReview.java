@@ -104,10 +104,6 @@ public class CMD_UndoReview extends BaseCommand {
             boolean successful = review.get().undoReview();
             if (successful) {
                 player.sendMessage(Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(player, LangPaths.Message.Info.UNDID_REVIEW, plot.getID() + "", plot.getPlotOwner().getName())));
-
-                if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                    PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotUndoReviewEvent(plot.getID()));
-                }
             }
             else player.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(player, LangPaths.Message.Error.ERROR_OCCURRED)));
         });
