@@ -136,8 +136,8 @@
         <dependency>
             <groupId>asia.buildtheearth.asean.discord</groupId>
             <artifactId>discord-plotsystem-api</artifactId>
-            <version>1.1.0</version>
-            <scope>compile</scope>
+            <version>1.2.0</version>
+            <scope>provided</scope>
         </dependency>
         <!-- Alps Utils -->
         <dependency>
