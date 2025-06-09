@@ -149,6 +149,10 @@ public final class PlotUtils {
 
                 return chosenPlot;
             }
+            else {
+                PlotWorld world =  PlotWorld.getPlotWorldByName(worldName);
+                return world != null? world.getPlot() : null;
+            }
         }
         return null;
     }
@@ -221,11 +225,13 @@ public final class PlotUtils {
 
         PlotSystem.getPlugin().getComponentLogger().info("Getting Plot region for saving from: {}", cuboidRegion.getCenter());
 
+        boolean outlineShifted = isPlotOutlineShifted(plot);
+
         // Get plot outline
-        List<BlockVector2> plotOutlines = isPlotOutlineShifted(plot)? plot.getShiftedOutline() : plot.getOutline();
+        List<BlockVector2> plotOutlines = outlineShifted? plot.getShiftedOutline() : plot.getOutline();
 
         // Shift schematic region to the force (0, 0) paste
-        if(isPlotOutlineShifted(plot)) {
+        if(outlineShifted) {
             cuboidRegion.shift(BlockVector3.at(-plotCenter.x(), 0, -plotCenter.z()));
 
             PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion.getCenter());
@@ -239,18 +245,31 @@ public final class PlotUtils {
         // Copy and write finished plot clipboard to schematic
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (Clipboard cb = new BlockArrayClipboard(region)) {
-            if(isPlotOutlineShifted(plot)) {
+
+            // Shift the clipboard to where it is pasted in the world
+            if(outlineShifted) {
                 cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), 0));
             }
             else cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
 
-            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(Objects.requireNonNull(region.getWorld()), region, cb, region.getMinimumPoint());
+            // Copy the outline region to clipboard
+            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
+                    Objects.requireNonNull(region.getWorld()), region, cb, region.getMinimumPoint());
             Operations.complete(forwardExtentCopy);
 
+            // Write to output stream
             try (ClipboardWriter writer = AbstractPlot.CLIPBOARD_FORMAT.getWriter(outputStream)) {
-                double initialY = clipboard.getRegion().getMinimumY();
-                double offset = initialY - cuboidRegion.getMinimumY();
-                writer.write(cb.transform(new AffineTransform().translate(Vector3.at(0,offset,0))));
+                // Transform the outline back for saving so that the origin coordinate is the same as the original schematic
+                if(outlineShifted) {
+                    double initialY = clipboard.getRegion().getMinimumY();
+                    double offset = initialY - cuboidRegion.getMinimumY();
+                    writer.write(cb.transform(new AffineTransform().translate(Vector3.at(plotCenter.x(), offset, plotCenter.z()))));
+                }
+                else {
+                    double initialY = clipboard.getRegion().getMinimumY();
+                    double offset = initialY - cuboidRegion.getMinimumY();
+                    writer.write(cb.transform(new AffineTransform().translate(Vector3.at(0, offset,0))));
+                }
             }
         }
 
@@ -260,7 +279,7 @@ public final class PlotUtils {
 
         // If plot was created in a void world, copy the result to the city world
         if (plot.getPlotType() != PlotType.CITY_INSPIRATION_MODE) {
-            AbstractPlotGenerator.pasteSchematic(null, outputStream.toByteArray(), new CityPlotWorld(plot), false);
+            AbstractPlotGenerator.pasteSchematic(null, outputStream.toByteArray(), new CityPlotWorld(plot), plot.getPlotType(), false);
         }
         return true;
     }
@@ -290,6 +309,10 @@ public final class PlotUtils {
                 schematicCoords[1] + plotRegion.getMinimumPoint().z()
         };
 
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+                "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+        );
+
         // Tutorial plot does not have global terra server offsets
         if(plot instanceof TutorialPlot) {
             double[] terraOffset = CoordinateConversion.getTerraOffset();
@@ -298,14 +321,23 @@ public final class PlotUtils {
             plotCoords[1] -= terraOffset[1];
         }
 
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+                "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+        );
+
         // Cancel out coordinates by itself if shifted
         if(PlotUtils.isPlotOutlineShifted(plot)) {
             // Shift the plot back to original coordinates
-            BlockVector2 center = plot.getBoundingBoxCenter();
+            BlockVector3 center = plot.getBoundingBoxCenter();
 
             plotCoords[0] -= center.x();
             plotCoords[1] -= center.z();
         }
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+        );
+
         // Return coordinates if they are in the schematic plot region
         ProtectedRegion protectedPlotRegion = plot.getWorld().getProtectedRegion() != null
                 ? plot.getWorld().getProtectedRegion()
@@ -351,20 +383,13 @@ public final class PlotUtils {
         return isPlotOutlineShifted(world.getPlot(), type);
     }
 
-
     /**
      *
      * @param plot The plot to check.
      * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
      */
     public static boolean isPlotOutlineShifted(@NotNull AbstractPlot plot) {
-        try {
-            return isPlotOutlineShifted(plot, plot.getPlotType());
-        } catch (SQLException ex) {
-            PlotSystem.getPlugin().getComponentLogger().warn(text("SQL error occurred trying to check for plot outline, plot may not appear correctly in game."));
-            return shouldShiftOutline(plot);
-        }
-
+        return isPlotOutlineShifted(plot, plot.getPlotType());
     }
 
     private static boolean shouldShiftOutline(@NotNull AbstractPlot plot) {
@@ -621,7 +646,7 @@ public final class PlotUtils {
                     }
 
                         List<BlockVector2> points = plot.getBlockOutline();
-                        BlockVector2 center = plot.getBoundingBoxCenter();
+                        BlockVector3 center = plot.getCenter();
 
                     for (BlockVector2 point : points) {
                         BlockVector2 particle = isPlotOutlineShifted(plot)? BlockVector2.at(point.x() - center.x(), point.z() - center.z()) : point;

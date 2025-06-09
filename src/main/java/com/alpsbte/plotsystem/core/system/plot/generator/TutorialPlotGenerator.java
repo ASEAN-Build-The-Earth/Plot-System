@@ -59,7 +59,7 @@ public class TutorialPlotGenerator extends AbstractPlotGenerator {
 
     public void generateOutlines(int schematicId) throws IOException, WorldEditException {
         ((TutorialPlot) plot).setTutorialSchematic(schematicId);
-        generateOutlines();
+        generateOutlines(this.plotType);
     }
 
     @Override

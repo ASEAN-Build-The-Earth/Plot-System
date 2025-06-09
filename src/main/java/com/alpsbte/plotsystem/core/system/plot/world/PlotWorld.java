@@ -24,6 +24,7 @@
 
 package com.alpsbte.plotsystem.core.system.plot.world;
 
+import com.alpsbte.alpslib.utils.AlpsUtils;
 import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
@@ -260,9 +261,13 @@ public class PlotWorld implements IWorld {
      */
     public static <T extends PlotWorld> T getPlotWorldByName(String worldName) {
         if (isOnePlotWorld(worldName) || isCityPlotWorld(worldName)) {
-            int id = Integer.parseInt(worldName.substring(2));
-            AbstractPlot plot = worldName.toLowerCase().startsWith("t-") ? DataProvider.TUTORIAL_PLOT.getById(id).orElse(null) : DataProvider.PLOT.getPlotById(id);
-            return plot == null ? null : plot.getWorld();
+
+            // Parse for integer ID, string ID is CityPlotWorld
+            Integer plotID = AlpsUtils.tryParseInt(worldName.substring(2));
+            if(plotID != null) {
+                AbstractPlot plot = worldName.toLowerCase().startsWith("t-") ? DataProvider.TUTORIAL_PLOT.getById(plotID).orElse(null) : DataProvider.PLOT.getPlotById(plotID);
+                return plot == null ? null : plot.getWorld();
+            }
         }
         return null;
     }

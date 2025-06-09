@@ -130,7 +130,7 @@ public abstract class AbstractPlotGenerator {
                 if (plotType.hasOnePlotPerWorld() || !world.isWorldGenerated()) {
                     new PlotWorldGenerator(world.getWorldName());
                 } else if (!world.isWorldLoaded() && !world.loadWorld()) throw new Exception("Could not load world");
-                generateOutlines();
+                generateOutlines(plotType);
                 createPlotProtection();
             } catch (Exception ex) {
                 exception = ex;
@@ -156,19 +156,17 @@ public abstract class AbstractPlotGenerator {
     /**
      * Generates plot schematic and outlines
      *
-     * @param plotSchematic        - plot schematic file
-     * @param environmentSchematic - environment schematic file
+     * @param type plot type to determine the outline generation coordinate
      */
-    protected void generateOutlines() throws IOException {
+    protected void generateOutlines(PlotType type) throws IOException {
         if (plotVersion >= 3 && plotType.hasEnvironment()) {
-            pasteSchematic(null, plot.getInitialSchematicBytes(), world, false);
-        } else {
             Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
-            pasteSchematic(airMask, PlotUtils.getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, true);
-        }
-        pasteSchematic(airMask, plotSchematic, world, true);
-    }
 
+            pasteSchematic(airMask, plot.getInitialSchematicBytes(), world, type, false);
+        } else {
+            pasteSchematic(null, PlotUtils.getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, type, true);
+        }
+    }
 
     /**
      * Creates plot protection
@@ -267,11 +265,6 @@ public abstract class AbstractPlotGenerator {
     protected void onComplete(boolean failed, boolean unloadWorld) {
         // Unload plot world if it is not needed anymore
         if (unloadWorld) world.unloadWorld(false);
-
-        // Called every time plot is created
-//        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-//            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotSubmitEvent(plot.getID()));
-//        }
     }
 
 
@@ -311,7 +304,7 @@ public abstract class AbstractPlotGenerator {
      * @param world         - world to paste in
      * @param clearArea     - clears the plot area with air before pasting
      */
-    public static void pasteSchematic(@Nullable Mask pasteMask, File schematicFile, PlotWorld world, PlotType type, boolean clearArea) throws IOException, WorldEditException, SQLException {
+    public static void pasteSchematic(@Nullable Mask pasteMask, byte[] schematicFile, PlotWorld world, PlotType type, boolean clearArea) throws IOException, WorldEditException {
         // load world
         if (!world.loadWorld()) return;
         World weWorld = new BukkitWorld(world.getBukkitWorld());

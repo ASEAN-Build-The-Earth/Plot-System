@@ -94,14 +94,14 @@ public class DefaultPlotGenerator extends AbstractPlotGenerator {
     }
 
     @Override
-    protected void generateOutlines() throws IOException, WorldEditException {
+    protected void generateOutlines(PlotType type) throws IOException, WorldEditException {
         if (plot instanceof Plot) {
             byte[] completedSchematic = ((Plot) plot).getCompletedSchematic();
             if (completedSchematic != null) {
                 Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
-                pasteSchematic(airMask, completedSchematic, world, true);
-            } else super.generateOutlines();
-        } else super.generateOutlines();
+                pasteSchematic(airMask, completedSchematic, world, type, true);
+            } else super.generateOutlines(type);
+        } else super.generateOutlines(type);
 
         // If the player is playing in his own world, then additionally generate the plot in the city world
         if (PlotWorld.isOnePlotWorld(world.getWorldName()) && plotVersion >= 3 && plot.getStatus() != Status.completed) {
