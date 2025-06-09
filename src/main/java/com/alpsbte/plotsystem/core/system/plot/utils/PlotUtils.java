@@ -467,8 +467,6 @@ public final class PlotUtils {
 
             for (Plot plot : plots) {
                 LocalDate lastActivity = plot.getLastActivity();
-
-                if(lastActivity == null) continue;
                 long interval = plot.isRejected() ? rejectedInactivityIntervalDays : inactivityIntervalDays;
                 LocalDate abandonDate = lastActivity.plusDays(interval);
 
