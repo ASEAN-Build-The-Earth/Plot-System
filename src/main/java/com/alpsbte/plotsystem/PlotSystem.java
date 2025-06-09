@@ -42,6 +42,7 @@ import com.alpsbte.plotsystem.core.system.tutorial.Tutorial;
 import com.alpsbte.plotsystem.core.system.tutorial.TutorialEventListener;
 import com.alpsbte.plotsystem.core.system.tutorial.utils.TutorialNPCTurnTracker;
 import com.alpsbte.plotsystem.core.system.tutorial.utils.TutorialUtils;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.PacketListener;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
@@ -53,8 +54,6 @@ import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import de.oliver.fancynpcs.api.FancyNpcsPlugin;
-import asia.buildtheearth.asean.discord.plotsystem.api.DiscordPlotSystem;
-import asia.buildtheearth.asean.discord.plotsystem.api.DiscordPlotSystemAPI;
 import net.kyori.adventure.text.Component;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
@@ -63,6 +62,7 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.ipvp.canvas.MenuFunctionListener;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -213,6 +213,12 @@ public class PlotSystem extends JavaPlugin {
             Bukkit.getScheduler().runTaskTimerAsynchronously(FancyNpcsPlugin.get().getPlugin(), new TutorialNPCTurnTracker(), 0, 1L);
         }
 
+        // Register discord Integration
+        org.bukkit.plugin.Plugin discordPlugin = PlotSystem.DependencyManager.getDiscordPlotSystemPlugin();
+        if(discordPlugin != null) {
+            DiscordUtil.init(discordPlugin);
+        }
+
         pluginEnabled = true;
         Bukkit.getConsoleSender().sendMessage(empty());
         Bukkit.getConsoleSender().sendMessage(text("Enabled Plot-System plugin.", DARK_GREEN));
@@ -340,8 +346,8 @@ public class PlotSystem extends JavaPlugin {
             return plugin.getServer().getPluginManager().isPluginEnabled("WorldGuardExtraFlags");
         }
 
-        public static boolean isDiscordPlotSystemEnabled() {
-            return plugin.getServer().getPluginManager().isPluginEnabled("DiscordPlotSystem") && getDiscordPlotSystem() != null;
+        public static @Nullable org.bukkit.plugin.Plugin getDiscordPlotSystemPlugin() {
+            return plugin.getServer().getPluginManager().getPlugin("DiscordPlotSystem");
         }
 
         /**
@@ -384,9 +390,9 @@ public class PlotSystem extends JavaPlugin {
         /**
          * @return Protocol Lib Instance
          */
-        public static ProtocolManager getProtocolManager() {return ProtocolLibrary.getProtocolManager();}
-
-        public static DiscordPlotSystem getDiscordPlotSystem() { return DiscordPlotSystemAPI.getInstance(); }
+        public static ProtocolManager getProtocolManager() {
+            return ProtocolLibrary.getProtocolManager();
+        }
     }
 
     public static class UpdateChecker {

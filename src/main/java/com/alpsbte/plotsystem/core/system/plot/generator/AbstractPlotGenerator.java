@@ -33,13 +33,12 @@ import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.CityPlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.ConfigUtil;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.AbandonType;
-import com.fastasyncworldedit.core.FaweAPI;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
@@ -144,7 +143,7 @@ public abstract class AbstractPlotGenerator {
             }
 
             if (exception != null) {
-                PlotUtils.Actions.abandonPlot(plot, AbandonType.MANUALLY);
+                PlotUtils.Actions.abandonPlot(plot, DiscordUtil.AbandonType.SYSTEM);
                 onException(exception);
             }
         }

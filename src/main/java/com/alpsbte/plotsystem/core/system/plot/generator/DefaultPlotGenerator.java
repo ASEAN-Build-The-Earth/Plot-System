@@ -31,13 +31,13 @@ import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.PlotDifficulty;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.sk89q.worldedit.WorldEditException;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotCreateEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -135,9 +135,8 @@ public class DefaultPlotGenerator extends AbstractPlotGenerator {
             plot.getWorld().teleportPlayer(getBuilder().getPlayer());
             LangUtil.getInstance().broadcast(LangPaths.Message.Info.CREATED_NEW_PLOT, plot.getPlotOwner().getName());
 
-            if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotCreateEvent(plot.getID()));
-            }
+            // Create the plot to discord forum
+            DiscordUtil.getOpt(plot.getID()).ifPresent(event -> event.onPlotCreate(this.plot));
         }
     }
 }
