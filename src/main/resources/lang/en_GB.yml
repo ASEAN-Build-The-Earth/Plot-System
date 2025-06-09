@@ -409,9 +409,34 @@ tutorials:
 # -----------------------------------------------------
 database:
   city-project:
-    example-city:
-      name: 'Example City'
-      description: 'Some description'
+    PH-DAVAO-MATINA-APLAYA: # 7.042936004680785, 125.58048686110517
+      name: 'Matina Aplaya, Davao'
+      description: 'Residential neighborhood in southern Davao City, Philippines'
+
+    TH-SONGKHLA-HATYAI: # 7.016802654191992, 100.47563631631806
+      name: 'Hat Yai, Songkhla'
+      description: 'School zone and residential area in Songkhla Province, Thailand'
+
+    TH-BANGKOK-YOTSE: # 13.74890303759502, 100.51607775858096
+      name: 'Yotse, Bangkok'
+      description: 'Low-rise residential blocks near central Bangkok'
+
+    MY-SELANGOR-KLANG: # 3.0477385442792397, 101.45532131472663
+      name: 'Klang, Selangor'
+      description: 'Urban housing district in Klang, Selangor, Malaysia'
+
+    SG-GEYLANG-ROAD: # 1.3117202029148871, 103.89357803782471
+      name: 'Geylang Road'
+      description: 'Urban housing along Geylang Road, Singapore'
+
+    VN-HANOI-DIEN-BIEN: # 21.034294713375957, 105.83325648698491
+      name: 'Điện Biên, Hanoi'
+      description: 'Urban residential zone in central Hanoi, Vietnam'
+
+    KH-PREAH-MONIVONG: # 11.556719551927682, 104.92058869352864
+      name: 'Preah Monivong, Phnom Penh'
+      description: 'Urban housing along Preah Monivong Boulevard, Cambodia'
+  # ISO 3166 international standard Alpha-2 Code
   country:
     AT:
       name: 'Austria'
@@ -419,6 +444,24 @@ database:
       name: 'Switzerland'
     LI:
       name: 'Liechtenstein'
+    ID:
+      name: 'Indonesia'
+    KH:
+      name: 'Cambodia'
+    MY:
+      name: 'Malaysia'
+    PH:
+      name: 'Philippines'
+    SG:
+      name: 'Singapore'
+    TH:
+      name: 'Thailand'
+    VN:
+      name: 'Vietnam'
+    XA:
+      name: 'ASEAN'
+    XX:
+      name: 'Testeries'
   difficulty:
     easy:
       name: 'Easy'
@@ -427,7 +470,7 @@ database:
     hard:
       name: 'Hard'
     residential:
-        name: 'Residential'
+      name: 'Residential'
     low-rise:
       name: 'Low Rise'
     mid-rise:
