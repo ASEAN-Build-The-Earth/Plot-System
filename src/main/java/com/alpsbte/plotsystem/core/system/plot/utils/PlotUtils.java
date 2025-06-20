@@ -91,6 +91,7 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -427,7 +428,12 @@ public final class PlotUtils {
                 boolean inNotificationWindow = minutesDiff <= 75;
 
                 for (Plot plot : plots) {
-                    LocalDate lastActivity = LocalDate.from(plot.getLastActivity().toInstant());
+                    LocalDate lastActivity = switch (plot.getLastActivity()) {
+                        case java.sql.Date date -> date.toLocalDate();
+                        case java.util.Date date -> date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                    };
+
+                    if(lastActivity == null) continue;
 
                     LocalDate abandonDate = lastActivity.plusDays(inactivityIntervalDays);
 
