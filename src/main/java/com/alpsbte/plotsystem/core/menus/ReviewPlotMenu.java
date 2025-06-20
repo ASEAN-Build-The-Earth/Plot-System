@@ -32,6 +32,7 @@ import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.Review;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.chat.ChatInput;
 import com.alpsbte.plotsystem.utils.chat.PlayerFeedbackChatInput;
@@ -42,10 +43,6 @@ import com.alpsbte.plotsystem.utils.items.BaseItems;
 import com.alpsbte.plotsystem.utils.items.CustomHeads;
 import com.alpsbte.plotsystem.utils.items.MenuItems;
 import com.sk89q.worldedit.WorldEditException;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotAbandonedEvent;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotApprovedEvent;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotRejectedEvent;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotSubmitEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -195,9 +192,6 @@ public class ReviewPlotMenu extends AbstractMenu {
                     } else if (totalRating == 0) {
                         plot.setStatus(Status.unfinished);
                         Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> clickPlayer.performCommand("plot abandon " + plot.getID()));
-                        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotAbandonedEvent(plot.getID()));
-                        }
                         return;
                     }
                     Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> clickPlayer.closeInventory());
@@ -232,9 +226,7 @@ public class ReviewPlotMenu extends AbstractMenu {
                         plot.getReview().setFeedback("No Feedback");
                         plot.getPlotOwner().addCompletedBuild(1);
 
-                        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotApprovedEvent(plot.getID()));
-                        }
+                        DiscordUtil.getOpt(plot.getID()).ifPresent(DiscordUtil.PlotEventAction::onPlotApprove);
 
                         // Remove Plot from Owner
                         plot.getPlotOwner().removePlot(plot.getSlot());
@@ -283,9 +275,7 @@ public class ReviewPlotMenu extends AbstractMenu {
                             reviewerConfirmationMessage = Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Info.PLOT_REJECTED, Integer.toString(plot.getID()), sb.toString()));
                         }
 
-                        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-                            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotRejectedEvent(plot.getID()));
-                        }
+                        DiscordUtil.getOpt(plot.getID()).ifPresent(DiscordUtil.PlotEventAction::onPlotReject);
 
                         PlotUtils.Actions.undoSubmit(plot);
                     }

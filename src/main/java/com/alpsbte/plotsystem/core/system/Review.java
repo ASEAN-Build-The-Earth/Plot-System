@@ -27,10 +27,10 @@ package com.alpsbte.plotsystem.core.system;
 import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.database.DatabaseConnection;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.enums.Category;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.FTPManager;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.PlotFeedbackEvent;
 import org.bukkit.Bukkit;
 
 import java.io.IOException;
@@ -177,10 +177,8 @@ public class Review {
         DatabaseConnection.createStatement("UPDATE plotsystem_reviews SET feedback = ? WHERE id = ?")
                 .setValue(feedback).setValue(this.reviewID).executeUpdate();
 
-        if(PlotSystem.DependencyManager.isDiscordPlotSystemEnabled()) {
-            int plot = this.plotID == null? this.getPlotID() : this.plotID;
-            PlotSystem.DependencyManager.getDiscordPlotSystem().callEvent(new PlotFeedbackEvent(plot, feedback));
-        }
+        DiscordUtil.getOpt(this.plotID == null? this.getPlotID() : this.plotID)
+                .ifPresent(event -> event.onPlotFeedback(feedback));
     }
 
     public void setFeedbackSent(boolean isSent) throws SQLException {
