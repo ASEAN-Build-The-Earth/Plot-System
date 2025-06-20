@@ -36,7 +36,6 @@ import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
-import asia.buildtheearth.asean.discord.plotsystem.api.events.AbandonType;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;

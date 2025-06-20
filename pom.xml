@@ -74,6 +74,11 @@
             <id>dmulloy2-repo</id>
             <url>https://repo.dmulloy2.net/repository/public/</url>
         </repository>
+        <!-- Maven Central for Discord Plot-System API -->
+        <repository>
+            <id>sonatype</id>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -136,7 +141,7 @@
         <dependency>
             <groupId>asia.buildtheearth.asean.discord</groupId>
             <artifactId>discord-plotsystem-api</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.2</version>
             <scope>provided</scope>
         </dependency>
         <!-- Alps Utils -->

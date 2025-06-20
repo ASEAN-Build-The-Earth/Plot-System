@@ -25,7 +25,7 @@
 package com.alpsbte.plotsystem.core.system.plot.utils;
 
 import com.alpsbte.plotsystem.PlotSystem;
-import com.alpsbte.plotsystem.core.database.DataProvider;
+import com.alpsbte.plotsystem.core.database.DatabaseConnection;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.CityProject;
 import com.alpsbte.plotsystem.core.system.Server;
@@ -363,6 +363,8 @@ public final class PlotUtils {
     }
 
     /**
+     * Check plot world if the outline is shifted
+     *
      * @param world The plot world to check.
      * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
      */
@@ -371,6 +373,8 @@ public final class PlotUtils {
     }
 
     /**
+     * Check plot world by type if the outline is shifted
+     *
      * @param world The plot world to check.
      * @param type The plot type
      * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
@@ -381,6 +385,7 @@ public final class PlotUtils {
 
 
     /**
+     * Check plot if the outline is shifted
      *
      * @param plot The plot to check.
      * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
@@ -412,32 +417,31 @@ public final class PlotUtils {
             try {
                 List<Plot> plots = Plot.getPlots(Status.unfinished);
                 FileConfiguration config = PlotSystem.getPlugin().getConfig();
-                long inactivityIntervalDays = config.getLong(ConfigPaths.INACTIVITY_INTERVAL);
+                long inactivityIntervalDays = config.getLong(ConfigPaths.INACTIVITY_INTERVAL, -2);
+                int inactivityNotificationDays = config.getInt(ConfigPaths.INACTIVITY_INTERVAL, 0);
+                int inactivityNotificationTime = config.getInt(ConfigPaths.INACTIVITY_INTERVAL, 16);
                 if (inactivityIntervalDays == -2) return;
 
                 // Determine if the current time is within the notification window.
-                // Run within a ±75-minute window around 16:00 local time.
-                // TODO: Maybe a config option? the #startUnfinishedPlotReminderTimer is too frequent to be a discord ping
-                long minutesDiff = Math.abs(ChronoUnit.MINUTES.between(LocalTime.now(), LocalTime.of(16, 0)));
-                boolean inNotificationWindow = minutesDiff <= 75;
+                // Run within a ±minute window around a set local time.
+                long minutesDiff = Math.abs(ChronoUnit.MINUTES.between(LocalTime.now(), LocalTime.of(inactivityNotificationTime, 0)));
+                boolean inNotificationWindow = inactivityNotificationDays > 0 && minutesDiff < 30;
 
                 for (Plot plot : plots) {
-                    LocalDate lastActivity = plot.getLastActivity();
+                    LocalDate lastActivity = LocalDate.from(plot.getLastActivity().toInstant());
 
-                    if(lastActivity == null) continue;
-                    long interval = plot.isRejected() ? rejectedInactivityIntervalDays : inactivityIntervalDays;
-                    LocalDate abandonDate = lastActivity.plusDays(interval);
+                    LocalDate abandonDate = lastActivity.plusDays(inactivityIntervalDays);
 
                     // Check if today is within 5 days before the plot's abandon date
-                    if(inNotificationWindow && LocalDate.now().isAfter(abandonDate.minusDays(5))) {
+                    if(inNotificationWindow && LocalDate.now().isAfter(abandonDate.minusDays(inactivityNotificationDays))) {
                         // Notify the plot's owner on discord
                         DiscordUtil.getOpt(plot.getID()).ifPresent(event -> event.onPlotInactivity(abandonDate));
                     }
 
-                    if (interval == -2 || abandonDate.isAfter(LocalDate.now())) continue;
+                    if(abandonDate.isAfter(LocalDate.now())) continue;
 
                     Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-                        if (Actions.abandonPlot(plot, AbandonType.INACTIVE)) {
+                        if (Actions.abandonPlot(plot, DiscordUtil.AbandonType.INACTIVE)) {
                             PlotSystem.getPlugin().getComponentLogger().info(text("Abandoned plot #" + plot.getID() + " due to inactivity!"));
                         } else {
                             PlotSystem.getPlugin().getComponentLogger().warn(text("An error occurred while abandoning plot #" + plot.getID() + " due to inactivity!"));
