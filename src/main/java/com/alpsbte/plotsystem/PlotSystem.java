@@ -76,7 +76,7 @@ import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public class PlotSystem extends JavaPlugin {
-    private static final String VERSION = "4.1.3";
+    private static final String VERSION = "4.2.0";
 
     private static PlotSystem plugin;
     private CommandManager commandManager;
@@ -224,7 +224,8 @@ public class PlotSystem extends JavaPlugin {
         Bukkit.getConsoleSender().sendMessage(text("Enabled Plot-System plugin.", DARK_GREEN));
         Bukkit.getConsoleSender().sendMessage(text("------------------------------------------------------", GOLD));
         Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("Made by ", GRAY)).append(text("Alps BTE (AT/CH/LI)", RED)));
-        Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("GitHub: ", GRAY)).append(text("https://github.com/AlpsBTE/Plot-System", WHITE)));
+        Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("Modified by ", GRAY)).append(text("ASEAN BTE (@tintinkung)", RED)));
+        Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("GitHub: ", GRAY)).append(text("https://github.com/ASEAN-Build-The-Earth/Plot-System/tree/legacy/4.2.0", WHITE)));
         Bukkit.getConsoleSender().sendMessage(text("------------------------------------------------------", GOLD));
     }
 
@@ -235,7 +236,8 @@ public class PlotSystem extends JavaPlugin {
             Bukkit.getConsoleSender().sendMessage(text("Disabling plugin...", RED));
             Bukkit.getConsoleSender().sendMessage(text("------------------------------------------------------", GOLD));
             Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("Made by ", GRAY)).append(text("Alps BTE (AT/CH/LI)", RED)));
-            Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("GitHub: ", GRAY)).append(text("https://github.com/AlpsBTE/Plot-System", WHITE)));
+            Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("Modified by ", GRAY)).append(text("ASEAN BTE (@tintinkung)", RED)));
+            Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("GitHub: ", GRAY)).append(text("https://github.com/ASEAN-Build-The-Earth/Plot-System/tree/legacy/4.2.0", WHITE)));
             Bukkit.getConsoleSender().sendMessage(text("------------------------------------------------------", GOLD));
 
             DecentHologramDisplay.activeDisplays.forEach(DecentHologramDisplay::delete);
