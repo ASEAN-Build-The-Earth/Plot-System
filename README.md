@@ -2,12 +2,12 @@
 ### _ASEAN Build The Earth Plot-System_
 
 This project is based on [AlpsBTE/Plot-System v4.X.X](https://github.com/AlpsBTE/Plot-System).  
-Release: [v4.2.0](https://github.com/ASEAN-Build-The-Earth/Plot-System/releases/tag/v4.2.0)
+Release: [v4.2.1](https://github.com/ASEAN-Build-The-Earth/Plot-System/releases/tag/v4.2.1)
 
 > [!IMPORTANT]
 > Plot-System is moving to a new major version **5.X.X**
 >
-> This branch (`legacy/4.2.0`) is the latest stable version,
+> This branch (`legacy/4.2.X`) is the latest stable version,
 > but is now in maintenance mode and only receives critical bug fixes.
 
 ---
