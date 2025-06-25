@@ -1,4 +1,4 @@
-# Latest Stable – v4.2.0
+# Latest Stable – v4.2.X
 ### _ASEAN Build The Earth Plot-System_
 
 This project is based on [AlpsBTE/Plot-System v4.X.X](https://github.com/AlpsBTE/Plot-System).  

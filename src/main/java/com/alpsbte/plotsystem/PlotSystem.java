@@ -222,7 +222,7 @@ public class PlotSystem extends JavaPlugin {
         Bukkit.getConsoleSender().sendMessage(text("------------------------------------------------------", GOLD));
         Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("Made by ", GRAY)).append(text("Alps BTE (AT/CH/LI)", RED)));
         Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("Modified by ", GRAY)).append(text("ASEAN BTE (@tintinkung)", RED)));
-        Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("GitHub: ", GRAY)).append(text("https://github.com/ASEAN-Build-The-Earth/Plot-System/tree/legacy/4.2.0", WHITE)));
+        Bukkit.getConsoleSender().sendMessage(text("> ", DARK_GRAY).append(text("GitHub: ", GRAY)).append(text("https://github.com/ASEAN-Build-The-Earth/Plot-System/tree/legacy/4.2.X", WHITE)));
         Bukkit.getConsoleSender().sendMessage(text("------------------------------------------------------", GOLD));
     }
 
