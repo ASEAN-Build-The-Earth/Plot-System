@@ -57,6 +57,7 @@ dependencies {
     compileOnly(libs.li.cinnazeyy.langlibs.api)
     compileOnly(libs.commons.io.commons.io)
     compileOnly(libs.io.papermc.paper.paper.api)
+    compileOnly(libs.asia.buildtheearth.asean.discord.discord.plotsystem.api)
 }
 
 val versionDetails: groovy.lang.Closure<com.palantir.gradle.gitversion.VersionDetails> by extra
