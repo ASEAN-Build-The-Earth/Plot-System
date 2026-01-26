@@ -21,6 +21,13 @@ enable-score-requirement: true
 # How many days of inactivity it will take before a claimed plot is automatically abandoned, -2 disables it
 inactivity-interval: 14
 
+# How long left (Days) until the plot gets abandon due to inactivity and the system will start pinging owner on discord
+# Be careful, if set >= inactivity-interval will ping the owner every day after plot is created
+inactivity-notification-days: 5
+
+# What local-time in a day to ping the owner discord for their inactive plot (24 Hour)
+inactivity-notification-time: 16
+
 # How many days of inactivity it will take before a rejected plots are automatically abandoned
 # Use -1 to use the normal inactivity-interval, -2 disables it
 rejected-inactivity-interval: -1
@@ -36,6 +43,22 @@ unfinished-reminder-interval: 20
 
 # Disable the City Inspiration Mode (Beta) CIM completely for new plots (Temporary Config Setting)
 disable-city-inspiration-mode: false
+
+# -----------------------------------------------------
+# | Coordinates Options
+# | [terra-offset]  -> The terra server coordinates offset.
+# | [plot-shifting] -> Enables shifting of single-plot worlds so the plot is positioned at (0, 0).
+# |                 Only applies to plots with a version >= the required version.
+# |                 Recommended for bedrock coordinates support.
+# | NOTE: Shifting is skipped for plots in City Inspiration Mode.
+# -----------------------------------------------------
+coordinates-options:
+  terra-offset:
+    offset-x: 0
+    offset-z: 0
+  plot-shifting:
+    enabled: false
+    required-version: 4
 
 # -----------------------------------------------------
 # | Supported databases: MariaDB & MySQL

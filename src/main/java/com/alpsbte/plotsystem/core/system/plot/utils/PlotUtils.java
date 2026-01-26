@@ -14,9 +14,12 @@ import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.core.system.review.PlotReview;
 import com.alpsbte.plotsystem.core.system.review.ReviewNotification;
 import com.alpsbte.plotsystem.utils.DependencyManager;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.ShortLink;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Status;
+import com.alpsbte.plotsystem.utils.conversion.CoordinateConversion;
+import com.alpsbte.plotsystem.utils.io.ConfigUtil;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
@@ -66,6 +69,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -252,8 +257,19 @@ public final class PlotUtils {
 
         BlockVector3 plotCenter = plot.getCenter();
 
+        PlotSystem.getPlugin().getComponentLogger().info("Getting Plot region for saving from: {}", cuboidRegion.getCenter());
+
+        boolean outlineShifted = isPlotOutlineShifted(plot);
+
         // Get plot outline
-        List<BlockVector2> plotOutlines = plot.getOutline();
+        List<BlockVector2> plotOutlines = outlineShifted? plot.getShiftedOutline() : plot.getOutline();
+
+        // Shift schematic region to the force (0, 0) paste
+        if(outlineShifted) {
+            cuboidRegion.shift(BlockVector3.at(-plotCenter.x(), 0, -plotCenter.z()));
+
+            PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion.getCenter());
+        }
 
         // Load finished plot region as cuboid region
         if (!plot.getWorld().loadWorld()) return false;
@@ -263,15 +279,33 @@ public final class PlotUtils {
         // Copy and write finished plot clipboard to schematic
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (Clipboard cb = new BlockArrayClipboard(region)) {
-            cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
 
-            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(Objects.requireNonNull(region.getWorld()), region, cb, region.getMinimumPoint());
+            // Shift the clipboard to where it is pasted in the world
+            if(outlineShifted) {
+                cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), 0));
+            }
+            else cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
+
+            // Copy the outline region to clipboard
+            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
+                    Objects.requireNonNull(region.getWorld()), region, cb, region.getMinimumPoint());
             Operations.complete(forwardExtentCopy);
 
+            // Write to output stream
             try (ClipboardWriter writer = AbstractPlot.CLIPBOARD_FORMAT.getWriter(outputStream)) {
-                double initialY = clipboard.getRegion().getMinimumY();
-                double offset = initialY - cuboidRegion.getMinimumY();
-                writer.write(cb.transform(new AffineTransform().translate(Vector3.at(0, offset, 0))));
+                // ASEAN START
+                // Transform the outline back for saving so that the origin coordinate is the same as the original schematic
+                if(outlineShifted) {
+                    double initialY = clipboard.getRegion().getMinimumY();
+                    double offset = initialY - cuboidRegion.getMinimumY();
+                    writer.write(cb.transform(new AffineTransform().translate(Vector3.at(plotCenter.x(), offset, plotCenter.z()))));
+                }
+                else {
+                    double initialY = clipboard.getRegion().getMinimumY();
+                    double offset = initialY - cuboidRegion.getMinimumY();
+                    writer.write(cb.transform(new AffineTransform().translate(Vector3.at(0, offset,0))));
+                }
+                // ASEAN END
             }
         }
 
@@ -283,7 +317,7 @@ public final class PlotUtils {
         if (plot.getPlotType() != PlotType.CITY_INSPIRATION_MODE) {
             var cpw = new CityPlotWorld(plot);
             Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(cpw.getBukkitWorld()), BlockTypes.AIR);
-            AbstractPlotGenerator.pasteSchematic(airMask, outputStream.toByteArray(), cpw, false, true);
+            AbstractPlotGenerator.pasteSchematic(airMask, outputStream.toByteArray(), cpw, plot.getPlotType(), false, true);
         }
         return true;
     }
@@ -313,6 +347,37 @@ public final class PlotUtils {
                 schematicCoords[1] + plotRegion.getMinimumPoint().z()
         };
 
+        // ASEAN START
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+                "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+        );
+
+        // Tutorial plot does not have global terra server offsets
+        if(plot instanceof TutorialPlot) {
+            double[] terraOffset = CoordinateConversion.getTerraOffset();
+
+            plotCoords[0] -= terraOffset[0];
+            plotCoords[1] -= terraOffset[1];
+        }
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+                "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+        );
+
+        // Cancel out coordinates by itself if shifted
+        if(PlotUtils.isPlotOutlineShifted(plot)) {
+            // Shift the plot back to original coordinates
+            BlockVector3 center = plot.getBoundingBoxCenter();
+
+            plotCoords[0] -= center.x();
+            plotCoords[1] -= center.z();
+        }
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+        );
+        // ASEAN END
+
         // Return coordinates if they are in the schematic plot region
         ProtectedRegion protectedPlotRegion = plot.getWorld().getProtectedRegion() != null
                 ? plot.getWorld().getProtectedRegion()
@@ -324,26 +389,106 @@ public final class PlotUtils {
         return null;
     }
 
+    // ASEAN START Plot Shifting Stradegy
+    /**
+     * Plot can be configured to be shifted to coordinates (0,0) upon generation; which includes: <ul>
+     *     <li>Tutorial plot with version >= 2.</li>
+     *     <li>Plot that shifting is explicitly enabled in the configuration.</li>
+     *     <li>The plot version >= required version for shifting to be enabled.</li>
+     * </ul>
+     * NOTE: Shifting is skipped for plots in City Inspiration Mode.
+     *
+     * @param plot The plot to check.
+     * @param type The plot type
+     * @return {@code true} if the plot will be shifted to (0,0) upon generation.
+     */
+    public static boolean isPlotOutlineShifted(@NotNull AbstractPlot plot, PlotType type) {
+        // City Inspiration Mode won't work with plot shifting
+        return shouldShiftOutline(plot) && type != PlotType.CITY_INSPIRATION_MODE;
+    }
+
+    /**
+     * @param world The plot world to check.
+     * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
+     */
+    public static boolean isPlotOutlineShifted(@NotNull PlotWorld world) {
+        return isPlotOutlineShifted(world.getPlot());
+    }
+
+    /**
+     * @param world The plot world to check.
+     * @param type The plot type
+     * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
+     */
+    public static boolean isPlotOutlineShifted(@NotNull PlotWorld world, PlotType type) {
+        return isPlotOutlineShifted(world.getPlot(), type);
+    }
+
+    /**
+     *
+     * @param plot The plot to check.
+     * @return {@link #isPlotOutlineShifted(AbstractPlot,PlotType)}
+     */
+    public static boolean isPlotOutlineShifted(@NotNull AbstractPlot plot) {
+        return isPlotOutlineShifted(plot, plot.getPlotType());
+    }
+
+    private static boolean shouldShiftOutline(@NotNull AbstractPlot plot) {
+        boolean enabled = PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.PLOT_SHIFTING_ENABLED, false);
+        int requiredVer = PlotSystem.getPlugin().getConfig().getInt(ConfigPaths.PLOT_SHIFTING_VERSION, 4);
+        double tutorialVersion = ConfigUtil.getTutorialInstance().getBeginnerTutorial().getVersion();
+
+        // Tutorial version >= 2 has the shifting supports.
+        if(plot instanceof TutorialPlot) return tutorialVersion >= 2;
+
+        // Requires configured setting to be enabled
+        return enabled && !(plot.getVersion() < requiredVer);
+    }
+    // ASEAN END
+
     public static void checkPlotsForLastActivity() {
         Bukkit.getScheduler().runTaskTimerAsynchronously(PlotSystem.getPlugin(), () -> {
             List<Plot> plots = DataProvider.PLOT.getPlots(Status.unfinished);
             FileConfiguration config = PlotSystem.getPlugin().getConfig();
-            long inactivityIntervalDays = config.getLong(ConfigPaths.INACTIVITY_INTERVAL);
+            long inactivityIntervalDays = config.getLong(ConfigPaths.INACTIVITY_INTERVAL, -2);
             long rejectedInactivityIntervalDays = (config.getLong(ConfigPaths.REJECTED_INACTIVITY_INTERVAL) != -1) ? config.getLong(ConfigPaths.REJECTED_INACTIVITY_INTERVAL) : inactivityIntervalDays;
+
+            // ASEAN START
+            int inactivityNotificationDays = config.getInt(ConfigPaths.INACTIVITY_NOTIFICATION_DAYS, 0);
+            int inactivityNotificationTime = config.getInt(ConfigPaths.INACTIVITY_NOTIFICATION_TIME, 16);
             if (inactivityIntervalDays == -2 && rejectedInactivityIntervalDays == -2) return;
+
+            // Determine if the current time is within the notification window.
+            // Run within a ±minute window around a set local time.
+            LocalTime now = LocalTime.now();
+            LocalTime start = LocalTime.of(inactivityNotificationTime, 0).minusMinutes(30);
+            LocalTime end = LocalTime.of(inactivityNotificationTime, 0).plusMinutes(30);
+            boolean inNotificationWindow = inactivityNotificationDays > 0 && !now.isBefore(start) && !now.isAfter(end);;
+
             for (Plot plot : plots) {
                 LocalDate lastActivity = plot.getLastActivity();
+
+                if(lastActivity == null) continue;
                 long interval = plot.isRejected() ? rejectedInactivityIntervalDays : inactivityIntervalDays;
-                if (interval == -2 || lastActivity == null || lastActivity.plusDays(interval).isAfter(LocalDate.now())) continue;
+                LocalDate abandonDate = lastActivity.plusDays(interval);
+
+                // Check if today is within X days before the plot's abandon date
+                if(inNotificationWindow && LocalDate.now().isAfter(abandonDate.minusDays(inactivityNotificationDays))) {
+                    // Notify the plot's owner on discord
+                    DiscordUtil.getOpt(plot.getId()).ifPresent(event -> event.onPlotInactivity(abandonDate));
+                }
+
+                if (interval == -2 || abandonDate.isAfter(LocalDate.now())) continue;
 
                 Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-                    if (Actions.abandonPlot(plot)) {
+                    if (Actions.abandonPlot(plot, DiscordUtil.AbandonType.INACTIVE)) {
                         PlotSystem.getPlugin().getComponentLogger().info(text("Abandoned plot #" + plot.getId() + " due to inactivity!"));
                     } else {
                         PlotSystem.getPlugin().getComponentLogger().warn(text("An error occurred while abandoning plot #" + plot.getId() + " due to inactivity!"));
                     }
                 });
             }
+            // ASEAN END
         }, 0L, 20 * 60 * 60L); // Check every hour
     }
 
@@ -384,6 +529,8 @@ public final class PlotUtils {
                     plot.getPermissions().removeBuilderPerms(builder.getUUID());
                 }
             }
+
+            DiscordUtil.getOpt(plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotSubmit);
         }
 
         public static void undoSubmit(@NotNull Plot plot) {
@@ -397,7 +544,7 @@ public final class PlotUtils {
             }
         }
 
-        public static boolean abandonPlot(@NotNull AbstractPlot plot) {
+        public static boolean abandonPlot(@NotNull AbstractPlot plot, @NotNull DiscordUtil.AbandonType type) {
             try {
                 if (plot.getWorld() instanceof OnePlotWorld) {
                     if (plot.getWorld().isWorldGenerated()) {
@@ -424,13 +571,15 @@ public final class PlotUtils {
                             if (regionManager.hasRegion(world.getRegionName())) regionManager.removeRegion(world.getRegionName());
                             if (regionManager.hasRegion(world.getRegionName() + "-1")) regionManager.removeRegion(world.getRegionName() + "-1");
 
-                            AbstractPlotGenerator.pasteSchematic(null, getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, true, false);
+                            AbstractPlotGenerator.pasteSchematic(null, getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, plot.getPlotType(), true, false);
                         } else PlotSystem.getPlugin().getComponentLogger().warn(text("Region Manager is null!"));
 
                         playersToTeleport.forEach(p -> p.teleport(Utils.getSpawnLocation()));
                         if (plot.getWorld().isWorldLoaded()) plot.getWorld().unloadWorld(false);
                     }
                 }
+                // Send to discord
+                DiscordUtil.getOpt(plot.getID()).ifPresent(event -> event.onPlotAbandon(type));
             } catch (IOException | WorldEditException ex) {
                 PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getId() + "!"), ex);
                 return false;
@@ -467,7 +616,7 @@ public final class PlotUtils {
         }
 
         public static boolean deletePlot(Plot plot) {
-            if (abandonPlot(plot)) {
+            if (abandonPlot(plot, DiscordUtil.AbandonType.COMMANDS)) {
                 CompletableFuture.runAsync(() -> {
                     if (DataProvider.PLOT.deletePlot(plot.getId())) return;
                     PlotSystem.getPlugin().getComponentLogger().warn(text("Failed to abandon plot with the ID " + plot.getId() + "!"));
@@ -558,14 +707,19 @@ public final class PlotUtils {
                         continue;
                     }
 
-                    List<BlockVector2> points = plot.getBlockOutline();
+                    // ASEAN START
+                        List<BlockVector2> points = plot.getBlockOutline();
+                        BlockVector3 center = plot.getCenter();
 
-                    for (BlockVector2 point : points)
+                    for (BlockVector2 point : points) {
+                        BlockVector2 particle = isPlotOutlineShifted(plot)? BlockVector2.at(point.x() - center.x(), point.z() - center.z()) : point;
+
                         if (point.distanceSq(playerPos2D) < 50 * 50) {
                             if (!particleAPIEnabled) {
-                                player.spawnParticle(Particle.FLAME, point.x(), player.getLocation().getY() + 1, point.z(), 1, 0.0, 0.0, 0.0, 0);
+                                player.spawnParticle(Particle.FLAME, particle.x(), player.getLocation().getY() + 1, particle.z(), 1, 0.0, 0.0, 0.0, 0);
                             } else {
-                                Location loc = new Location(player.getWorld(), point.x(), player.getLocation().getY() + 1, point.z());
+                                Location loc = new Location(player.getWorld(), particle.x(), player.getLocation().getY() + 1, particle.z());
+                    // ASEAN END
                                 // create a particle packet
                                 Object packet = particles.FLAME().packet(true, loc);
 
@@ -573,6 +727,7 @@ public final class PlotUtils {
                                 particles.sendPacket(player, packet);
                             }
                         }
+                    }
                 }
             }
         }

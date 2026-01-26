@@ -9,10 +9,23 @@ public abstract class ConfigPaths {
     public static final String ENABLE_SCORE_REQUIREMENT = "enable-score-requirement";
     public static final String DEV_MODE = "dev-mode";
     public static final String INACTIVITY_INTERVAL = "inactivity-interval";
+    public static final String INACTIVITY_NOTIFICATION_TIME = "inactivity-notification-time";
+    public static final String INACTIVITY_NOTIFICATION_DAYS = "inactivity-notification-days";
     public static final String REJECTED_INACTIVITY_INTERVAL = "rejected-inactivity-interval";
     public static final String ENABLE_GROUP_SUPPORT = "enable-group-support";
     public static final String UNFINISHED_REMINDER_INTERVAL = "unfinished-reminder-interval";
     public static final String DISABLE_CITY_INSPIRATION_MODE = "disable-city-inspiration-mode";
+
+    // Coordinates Options
+    private static final String COORDINATES_OPTIONS = "coordinates-options.";
+
+    private static final String TERRA_OFFSET = COORDINATES_OPTIONS + "terra-offset.";
+    public static final String TERRA_OFFSET_X = TERRA_OFFSET + "offset-x";
+    public static final String TERRA_OFFSET_Z = TERRA_OFFSET + "offset-z";
+
+    private static final String PLOT_SHIFTING = COORDINATES_OPTIONS + "plot-shifting.";
+    public static final String PLOT_SHIFTING_ENABLED = PLOT_SHIFTING + "enabled";
+    public static final String PLOT_SHIFTING_VERSION = PLOT_SHIFTING + "required-version";
     // Leaderboards
     private static final String HOLOGRAMS = "holograms.";
     public static final String SCORE_LEADERBOARD = "score-leaderboard";

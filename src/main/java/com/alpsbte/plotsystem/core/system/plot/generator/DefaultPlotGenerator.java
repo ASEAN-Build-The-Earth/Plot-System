@@ -9,6 +9,7 @@ import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.PlotDifficulty;
 import com.alpsbte.plotsystem.utils.enums.Status;
@@ -69,15 +70,15 @@ public class DefaultPlotGenerator extends AbstractPlotGenerator {
     }
 
     @Override
-    protected void generateOutlines() throws IOException, WorldEditException {
+    protected void generateOutlines(PlotType type) throws IOException, WorldEditException {
         if (plot instanceof Plot) {
             byte[] completedSchematic = ((Plot) plot).getCompletedSchematic();
             if (completedSchematic != null) {
                 PlotSystem.getPlugin().getComponentLogger().info("Found completed schematic, pasting only that.");
                 Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
-                pasteSchematic(airMask, completedSchematic, world, false, true);
-            } else super.generateOutlines();
-        } else super.generateOutlines();
+                pasteSchematic(airMask, completedSchematic, world, type, false, true);
+            } else super.generateOutlines(type);
+        } else super.generateOutlines(type);
 
         // If the player is playing in his own world, then additionally generate the plot in the city world
         if (PlotWorld.isOnePlotWorld(world.getWorldName()) && plotVersion >= 3 && plot.getStatus() != Status.completed) {
@@ -117,5 +118,8 @@ public class DefaultPlotGenerator extends AbstractPlotGenerator {
         PlotUtils.Cache.clearCache(getBuilder().getUUID());
         plot.getWorld().teleportPlayer(getBuilder().getPlayer());
         LangUtil.getInstance().broadcast(LangPaths.Message.Info.CREATED_NEW_PLOT, getBuilder().getName());
+
+        // Create the plot to discord forum
+        DiscordUtil.getOpt(plot.getId()).ifPresent(event -> event.onPlotCreate(this.plot));
     }
 }

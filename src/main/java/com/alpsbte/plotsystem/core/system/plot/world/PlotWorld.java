@@ -7,6 +7,7 @@ import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.TutorialPlot;
 import com.alpsbte.plotsystem.core.system.plot.generator.AbstractPlotGenerator;
 import com.alpsbte.plotsystem.utils.DependencyManager;
+import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -108,7 +109,18 @@ public class PlotWorld implements IWorld {
     @Override
     public boolean teleportPlayer(@NotNull Player player) {
         if (loadWorld() && plot != null) {
-            player.teleport(getSpawnPoint(plot instanceof TutorialPlot ? null : plot.getCenter()));
+            // ASEAN START
+            BlockVector3 teleportPosition = null;
+
+            if(!(plot instanceof TutorialPlot)) {
+                if(PlotUtils.isPlotOutlineShifted(plot))
+                    teleportPosition = BlockVector3.at(0, plot.getCenter().y(), 0);
+                else
+                    teleportPosition = plot.getCenter();
+            }
+
+            player.teleport(getSpawnPoint(teleportPosition));
+            // ASEAN END
             return true;
         } else PlotSystem.getPlugin().getComponentLogger().warn(text("Could not teleport player " + player.getName() + " to world " + worldName + "!"));
         return false;

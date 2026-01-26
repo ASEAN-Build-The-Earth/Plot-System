@@ -56,9 +56,11 @@ public enum BaseItems {
     RANDOM_PLOT_ITEM("random-plot-item"),
 
     DIFFICULTY_AUTOMATIC("difficulty-automatic"),
-    DIFFICULTY_EASY("difficulty-easy"),
-    DIFFICULTY_MEDIUM("difficulty-medium"),
-    DIFFICULTY_HARD("difficulty-hard"),
+    DIFFICULTY_RESIDENTIAL("difficulty-residential"),
+    DIFFICULTY_LOW_RISE("difficulty-low-rise"),
+    DIFFICULTY_MIXED("difficulty-mixed"),
+    DIFFICULTY_MID_RISE("difficulty-mid-rise"),
+    DIFFICULTY_HIGH_RISE("difficulty-high-rise"),
 
     TUTORIAL_ITEM("tutorial-item"),
 

@@ -193,9 +193,11 @@ public class Utils {
 
         public static @NotNull TextComponent getFormattedDifficulty(@NotNull PlotDifficulty plotDifficulty, Player player) {
             return switch (plotDifficulty) {
-                case EASY -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".easy.name"), GREEN).decoration(BOLD, true);
-                case MEDIUM -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".medium.name"), GOLD).decoration(BOLD, true);
-                case HARD -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".hard.name"), RED).decoration(BOLD, true);
+                case RESIDENTIAL -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".residential.name"), GREEN).decoration(BOLD, true);
+                case LOW_RISE -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".low-rise.name"), GOLD).decoration(BOLD, true);
+                case MID_RISE -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".mid-rise.name"), DARK_AQUA).decoration(BOLD, true);
+                case HIGH_RISE -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".high-rise.name"), RED).decoration(BOLD, true);
+                case MIXED -> text(LangUtil.getInstance().get(player, LangPaths.Database.DIFFICULTY + ".mixed.name"), LIGHT_PURPLE).decoration(BOLD, true);
             };
         }
     }

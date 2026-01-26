@@ -45,6 +45,8 @@ public abstract class AbstractPlot {
 
     protected List<BlockVector2> outline;
     protected List<BlockVector2> blockOutline;
+    protected List<BlockVector2> shiftedOutline;
+
 
     protected AbstractPlot(int id, UUID plotOwnerUUID) {
         this.id = id;
@@ -161,6 +163,42 @@ public abstract class AbstractPlot {
     }
 
     /**
+     * Remap outline points as a rectangular bounding box (minX, minZ, maxZ, maxZ)
+     * then return the center of that bounding box.
+     *
+     * @return The center point of the bounding box as a {@link BlockVector2},
+     *         will fetch for schematic center by {@link #getCenter()} if the plot does not have outline data.
+     */
+    public BlockVector3 getBoundingBoxCenter() {
+        if(this.outline == null) {
+            return getCenter();
+        }
+
+        PlotSystem.getPlugin().getComponentLogger().info(text("Check Outline Center: " + this.getCenter().toString()));
+
+        int minX = this.outline.getFirst().x();
+        int minZ = this.outline.getFirst().z();
+        int maxX = this.outline.getFirst().x();
+        int maxZ = this.outline.getFirst().z();
+
+        // Determines bounding box corner
+        for (BlockVector2 v : this.outline) {
+            int x = v.x();
+            int z = v.z();
+            if (x < minX) minX = x;
+            if (z < minZ) minZ = z;
+            if (x > maxX) maxX = x;
+            if (z > maxZ) maxZ = z;
+        }
+
+        Vector3 center = BlockVector2.at(minX, minZ).add(BlockVector2.at(maxX, maxZ)).toVector3().divide(2);
+
+        PlotSystem.getPlugin().getComponentLogger().info(text("Checking BoundingBox Center: " + center.toString()));
+
+        return getCenter();
+    }
+
+    /**
      * @return plot permission manager to add or remove build rights
      */
     public PlotPermissions getPermissions() {
@@ -190,6 +228,21 @@ public abstract class AbstractPlot {
         }
         this.outline = locations;
         return locations;
+    }
+
+    public final List<BlockVector2> getShiftedOutline() {
+        if(this.shiftedOutline != null)
+            return this.shiftedOutline;
+
+        List<BlockVector2> outline = getOutline();
+        List<BlockVector2> shiftedOutlines = new ArrayList<>(outline);
+
+        BlockVector3 center = getCenter();
+        for(int i = 0; i < outline.size(); i++)
+            shiftedOutlines.set(i, BlockVector2.at(outline.get(i).x() - center.x(), outline.get(i).z() - center.z()));
+
+        this.shiftedOutline = shiftedOutlines;
+        return shiftedOutline;
     }
 
     /**

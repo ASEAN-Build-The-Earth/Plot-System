@@ -38,7 +38,7 @@ import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 public class CountryMenu extends AbstractMenu {
     private List<Country> countryProjects;
     private final Continent selectedContinent;
-    private PlotDifficulty selectedPlotDifficulty = PlotDifficulty.EASY;
+    private PlotDifficulty selectedPlotDifficulty = PlotDifficulty.RESIDENTIAL;
 
     CountryMenu(Player player, @NotNull Continent continent) {
         super(6, LangUtil.getInstance().get(player, continent.langPath) + " → " + LangUtil.getInstance().get(player, LangPaths.MenuTitle.COMPANION_SELECT_COUNTRY), player);
@@ -93,14 +93,14 @@ public class CountryMenu extends AbstractMenu {
 
         CompanionMenu.clickEventTutorialItem(getMenu());
 
-        int startingSlot = 9;
         if (CompanionMenu.hasContinentView()) {
             getMenu().getSlot(0).setClickHandler((clickPlayer, clickInformation) -> new ContinentMenu(clickPlayer));
         }
 
         for (Country country : countryProjects) {
-            int i = countryProjects.indexOf(country);
-            getMenu().getSlot(startingSlot + i).setClickHandler((clickPlayer, clickInformation) -> new CityProjectMenu(clickPlayer, country, selectedPlotDifficulty));
+            int slot = getCountrySlot(country);
+
+            getMenu().getSlot(slot).setClickHandler((clickPlayer, clickInformation) -> new CityProjectMenu(clickPlayer, country, selectedPlotDifficulty));
         }
 
         Map<Integer, FooterItem> footerItems = CompanionMenu.getFooterItems(45, getMenuPlayer(), player -> new CountryMenu(player, selectedContinent));
@@ -130,7 +130,6 @@ public class CountryMenu extends AbstractMenu {
     }
 
     private void setCountryItems() {
-        int startingSlot = 9;
         if (CompanionMenu.hasContinentView()) {
             getMenu().getSlot(1).setItem(MenuItems.backMenuItem(getMenuPlayer()));
         } else {
@@ -145,8 +144,9 @@ public class CountryMenu extends AbstractMenu {
             int plotsInProgress = DataProvider.PLOT.getPlots(cities, Status.unfinished, Status.unreviewed).size();
             int plotsCompleted = DataProvider.PLOT.getPlots(cities, Status.completed).size();
             int plotsUnclaimed = DataProvider.PLOT.getPlots(cities, Status.unclaimed).size();
+            int slot = getCountrySlot(country);
 
-            getMenu().getSlot(startingSlot + countryProjects.indexOf(country)).setItem(new ItemBuilder(item)
+            getMenu().getSlot(slot).setItem(new ItemBuilder(item)
                     .setName(text(country.getName(getMenuPlayer()), AQUA).decoration(BOLD, true))
                     .setLore(new LoreBuilder()
                             .addLine(text(cities.size(), GOLD).append(text(" " + LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.CITIES), GRAY)))
@@ -162,5 +162,26 @@ public class CountryMenu extends AbstractMenu {
                             .build())
                     .build());
         }
+    }
+
+    /**
+     * Special slots for ASEAN countries.
+     *
+     * @param country The country to get
+     * @return Slot position in integer
+     */
+    private int getCountrySlot(Country country) {
+        return switch (country.getCode()) {
+            case "TH" -> 12;
+            case "MY" -> 13;
+            case "PH" -> 14;
+            case "SG" -> 21;
+            case "XA" -> 22;
+            case "ID" -> 23;
+            case "VN" -> 30;
+            case "LA" -> 31;
+            case "KH" -> 32;
+            case null, default -> 9 + countryProjects.indexOf(country);
+        };
     }
 }

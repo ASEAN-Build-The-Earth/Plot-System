@@ -25,9 +25,7 @@ import org.mvplugins.multiverse.core.world.WorldManager;
 import org.mvplugins.multiverse.core.world.options.ImportWorldOptions;
 import org.mvplugins.multiverse.external.vavr.control.Option;
 
-import javax.annotation.Nonnull;
 import java.util.Objects;
-import java.util.Random;
 
 import static net.kyori.adventure.text.Component.text;
 
@@ -106,6 +104,18 @@ public class PlotWorldGenerator {
         mvWorld.get().setAutoLoad(false);
         mvWorld.get().setKeepSpawnInMemory(false);
         worldManager.saveWorldsConfig();
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Generated PlotWorld at the spawn location: " + bukkitWorld.getSpawnLocation())
+        );
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Spawn location loaded: " + bukkitWorld.getChunkAt(bukkitWorld.getSpawnLocation()).isLoaded())
+        );
+
+        PlotSystem.getPlugin().getComponentLogger().info(text(
+            "Spawn location generated: " + bukkitWorld.getChunkAt(bukkitWorld.getSpawnLocation()).isGenerated())
+        );
     }
 
     protected void createGlobalProtection() throws StorageException {
@@ -133,12 +143,35 @@ public class PlotWorldGenerator {
 
     public static class EmptyChunkGenerator extends ChunkGenerator {
         @Override
-        @Nonnull
-        public ChunkData generateChunkData(@Nonnull World world, @Nonnull Random random, int x, int z, @Nonnull BiomeGrid biome) {
-            return createChunkData(world);
+        public boolean shouldGenerateCaves() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldGenerateDecorations() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldGenerateMobs() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldGenerateStructures() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldGenerateNoise() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldGenerateSurface() {
+            return false;
         }
     }
-
 }
 
 

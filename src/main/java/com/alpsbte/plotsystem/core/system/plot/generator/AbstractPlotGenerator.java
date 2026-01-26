@@ -9,6 +9,7 @@ import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.CityPlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.DependencyManager;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
@@ -17,6 +18,7 @@ import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -26,6 +28,7 @@ import com.sk89q.worldedit.function.mask.Mask;
 import com.sk89q.worldedit.function.mask.RegionMask;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.math.BlockVector2;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.Vector2;
 import com.sk89q.worldedit.regions.CylinderRegion;
@@ -104,7 +107,7 @@ public abstract class AbstractPlotGenerator {
                 if (plotType.hasOnePlotPerWorld() || !world.isWorldGenerated()) {
                     new PlotWorldGenerator(world.getWorldName());
                 } else if (!world.isWorldLoaded() && !world.loadWorld()) throw new Exception("Could not load world");
-                generateOutlines();
+                generateOutlines(plotType);
                 createPlotProtection();
             } catch (Exception ex) {
                 exception = ex;
@@ -112,7 +115,7 @@ public abstract class AbstractPlotGenerator {
             this.onComplete(exception != null, false);
 
             if (exception != null) {
-                PlotUtils.Actions.abandonPlot(plot);
+                PlotUtils.Actions.abandonPlot(plot, DiscordUtil.AbandonType.SYSTEM);
                 onException(exception);
             }
         }
@@ -129,16 +132,18 @@ public abstract class AbstractPlotGenerator {
 
     /**
      * Generates plot schematic and outlines
+     *
+     * @param type plot type to determine the outline generation coordinate
      */
-    protected void generateOutlines() throws IOException {
+    protected void generateOutlines(PlotType type) throws IOException {
         if (plotVersion >= 3 && plotType.hasEnvironment()) {
-            pasteSchematic(null, plot.getInitialSchematicBytes(), world, false, false);
-        } else {
             Mask airMask = new BlockTypeMask(BukkitAdapter.adapt(world.getBukkitWorld()), BlockTypes.AIR);
-            pasteSchematic(airMask, PlotUtils.getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, true, false);
+
+            pasteSchematic(airMask, plot.getInitialSchematicBytes(), world, type, false, false);
+        } else {
+            pasteSchematic(null, PlotUtils.getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, type, true, false);
         }
     }
-
 
     /**
      * Creates plot protection
@@ -147,14 +152,23 @@ public abstract class AbstractPlotGenerator {
         RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world.getBukkitWorld()));
 
+        // Tutorial plots and plot with normal terra coordinates does not get shift.
+        boolean isShiftedPlot = PlotUtils.isPlotOutlineShifted(plot, plotType);
+
+        List<BlockVector2> plotOutlines = isShiftedPlot ? plot.getShiftedOutline() : plot.getOutline();
+
         if (regionManager != null) {
             // Create build region for plot from the outline of the plot
-            ProtectedRegion protectedBuildRegion = new ProtectedPolygonalRegion(world.getRegionName(), plot.getOutline(), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+            ProtectedRegion protectedBuildRegion = new ProtectedPolygonalRegion(world.getRegionName(), plotOutlines, PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedBuildRegion.setPriority(100);
 
             // Create protected plot region for plot
             World weWorld = new BukkitWorld(world.getBukkitWorld());
-            CylinderRegion cylinderRegion = new CylinderRegion(weWorld, plot.getCenter(), Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+
+            BlockVector3 regionCenter = isShiftedPlot? BlockVector3.at(0, plot.getCenter().y(), 0) : plot.getCenter();
+
+            CylinderRegion cylinderRegion = new CylinderRegion(weWorld, regionCenter, Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+
             ProtectedRegion protectedRegion = new ProtectedPolygonalRegion(world.getRegionName() + "-1", cylinderRegion.polygonize(-1), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedRegion.setPriority(50);
 
@@ -265,7 +279,7 @@ public abstract class AbstractPlotGenerator {
      * @param clearArea     - clears the plot area with air before pasting
      * @param offset        - offset for the paste operation
      */
-    public static void pasteSchematic(@Nullable Mask pasteMask, byte[] schematicFile, @NotNull PlotWorld world, boolean clearArea, boolean offset) throws IOException {
+    public static void pasteSchematic(@Nullable Mask pasteMask, byte[] schematicFile, @NotNull PlotWorld world, PlotType type, boolean clearArea, boolean offset) throws IOException {
         // load world
         if (!world.loadWorld()) return;
         World weWorld = new BukkitWorld(world.getBukkitWorld());
@@ -273,7 +287,8 @@ public abstract class AbstractPlotGenerator {
         // set outline region with air
         if (clearArea) {
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
-                Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, world.getPlot().getOutline(), 0, PlotWorld.MAX_WORLD_HEIGHT);
+                List<BlockVector2> plotOutline = PlotUtils.isPlotOutlineShifted(world, type) ? world.getPlot().getShiftedOutline() : world.getPlot().getOutline();
+                Polygonal2DRegion polyRegion = new Polygonal2DRegion(weWorld, plotOutline, 0, PlotWorld.MAX_WORLD_HEIGHT);
                 editSession.setMask(new RegionMask(polyRegion));
                 editSession.setBlocks((Region) polyRegion, Objects.requireNonNull(BlockTypes.AIR).getDefaultState());
             }
@@ -297,9 +312,15 @@ public abstract class AbstractPlotGenerator {
         // paste schematic
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
             if (pasteMask != null) editSession.setMask(pasteMask);
+
+            BlockVector3 plotCenter = world.getPlot().getCenter();
+            BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world, type)
+                    ? BlockVector3.at(0, pasteY, 0)
+                    : BlockVector3.at(plotCenter.x(), pasteY, plotCenter.z());
+
             Operation clipboardHolder = new ClipboardHolder(clipboard)
                     .createPaste(editSession)
-                    .to(BlockVector3.at(world.getPlot().getCenter().x(), pasteY, world.getPlot().getCenter().z()))
+                    .to(worldCenter)
                     .build();
             Operations.complete(clipboardHolder);
         }

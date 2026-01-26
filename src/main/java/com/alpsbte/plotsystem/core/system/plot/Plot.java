@@ -204,26 +204,45 @@ public class Plot extends AbstractPlot {
 
     public static CompletableFuture<PlotDifficulty> getPlotDifficultyForBuilder(CityProject city, Builder builder) {
         // Check if plot difficulties are available
-        boolean easyHasPlots = false, mediumHasPlots = false, hardHasPlots = false;
-        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.EASY, Status.unclaimed).isEmpty()) easyHasPlots = true;
-        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.MEDIUM, Status.unclaimed).isEmpty()) mediumHasPlots = true;
-        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.HARD, Status.unclaimed).isEmpty()) hardHasPlots = true;
+        // easy: RESIDENTIAL
+        // medium: LOW_RISE
+        // hard: MIXED
+        // Extra:
+        // mid-rise: HARD
+        // high-rise: EXTRA_HARD
 
-        if (hardHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.HARD)) { // Return hard
-            return CompletableFuture.completedFuture(PlotDifficulty.HARD);
-        } else if (mediumHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.MEDIUM)) { // Return medium
-            return CompletableFuture.completedFuture(PlotDifficulty.MEDIUM);
-        } else if (easyHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.EASY)) { // Return easy
-            return CompletableFuture.completedFuture(PlotDifficulty.EASY);
-        } else if (mediumHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.HARD)) { // If hard has no plots return medium
-            return CompletableFuture.completedFuture(PlotDifficulty.EASY);
-        } else if (easyHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.MEDIUM)) { // If medium has no plots return easy
-            return CompletableFuture.completedFuture(PlotDifficulty.MEDIUM);
+        boolean easyHasPlots = false, mediumHasPlots = false, hardHasPlots = false;
+        boolean midRiseHasPlots = false, highRiseHashPlot = false;
+        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.RESIDENTIAL, Status.unclaimed).isEmpty()) easyHasPlots = true;
+        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.LOW_RISE, Status.unclaimed).isEmpty()) mediumHasPlots = true;
+        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.MIXED, Status.unclaimed).isEmpty()) hardHasPlots = true;
+
+        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.MID_RISE, Status.unclaimed).isEmpty()) midRiseHasPlots = true;
+        if (!DataProvider.PLOT.getPlots(city, PlotDifficulty.HIGH_RISE, Status.unclaimed).isEmpty()) highRiseHashPlot = true;
+
+        if (highRiseHashPlot && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.HIGH_RISE)) { // Return extra-hard
+            return CompletableFuture.completedFuture(PlotDifficulty.HIGH_RISE);
+        } else if (hardHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.MIXED)) { // Return hard
+            return CompletableFuture.completedFuture(PlotDifficulty.MIXED);
+        } else if (midRiseHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.MID_RISE)) { // Return hard
+            return CompletableFuture.completedFuture(PlotDifficulty.MID_RISE);
+        } else if (mediumHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.LOW_RISE)) { // Return medium
+            return CompletableFuture.completedFuture(PlotDifficulty.LOW_RISE);
+        } else if (easyHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.RESIDENTIAL)) { // Return easy
+            return CompletableFuture.completedFuture(PlotDifficulty.RESIDENTIAL);
+        } else if (mediumHasPlots && meetsPlotDifficultyScoreRequirement(builder, PlotDifficulty.MIXED)) { // If hard has no plots return medium
+            return CompletableFuture.completedFuture(PlotDifficulty.RESIDENTIAL);
         } else if (!PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.ENABLE_SCORE_REQUIREMENT)) { // If score requirement is disabled get plot from any available difficulty
             if (easyHasPlots) {
-                return CompletableFuture.completedFuture(PlotDifficulty.EASY);
+                return CompletableFuture.completedFuture(PlotDifficulty.RESIDENTIAL);
             } else if (mediumHasPlots) {
-                return CompletableFuture.completedFuture(PlotDifficulty.MEDIUM);
+                return CompletableFuture.completedFuture(PlotDifficulty.LOW_RISE);
+            } else if (hardHasPlots) {
+                return CompletableFuture.completedFuture(PlotDifficulty.MIXED);
+            } else if (midRiseHasPlots) {
+                return CompletableFuture.completedFuture(PlotDifficulty.MID_RISE);
+            } else if (highRiseHashPlot) {
+                return CompletableFuture.completedFuture(PlotDifficulty.HIGH_RISE);
             }
         }
         return CompletableFuture.completedFuture(null); // If nothing is available return null

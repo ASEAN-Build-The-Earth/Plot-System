@@ -117,12 +117,16 @@ public class CompanionMenu {
 
         if (selectedPlotDifficulty != null) {
             switch (selectedPlotDifficulty) {
-                case EASY:
-                    item = BaseItems.DIFFICULTY_EASY.getItem(); break;
-                case MEDIUM:
-                    item = BaseItems.DIFFICULTY_MEDIUM.getItem(); break;
-                case HARD:
-                    item = BaseItems.DIFFICULTY_HARD.getItem(); break;
+                case RESIDENTIAL:
+                    item = BaseItems.DIFFICULTY_RESIDENTIAL.getItem(); break;
+                case LOW_RISE:
+                    item = BaseItems.DIFFICULTY_LOW_RISE.getItem(); break;
+                case MIXED:
+                    item = BaseItems.DIFFICULTY_MIXED.getItem(); break;
+                case MID_RISE:
+                    item = BaseItems.DIFFICULTY_MID_RISE.getItem(); break;
+                case HIGH_RISE:
+                    item = BaseItems.DIFFICULTY_HIGH_RISE.getItem(); break;
                 default:
                     break;
             }

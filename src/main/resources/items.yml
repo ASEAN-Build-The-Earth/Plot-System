@@ -142,16 +142,22 @@ random-plot-item:
   modelId: ''
 
 difficulty-automatic:
-  material: head(8614)
+  material: head(8614) # White Concrete
   modelId: ''
-difficulty-easy:
-  material: head(8621)
+difficulty-residential:
+  material: head(8621) # Lime Concrete
   modelId: ''
-difficulty-medium:
-  material: head(8613)
+difficulty-low-rise:
+  material: head(8613) # Yellow Concrete
   modelId: ''
-difficulty-hard:
-  material: head(8616)
+difficulty-mixed:
+  material: head(8620) # Magenta Concrete
+  modelId: ''
+difficulty-mid-rise:
+  material: head(13394) # Light Blue Concrete
+  modelId: ''
+difficulty-high-rise:
+  material: head(8616) # Red Concrete
   modelId: ''
 
 tutorial-item:

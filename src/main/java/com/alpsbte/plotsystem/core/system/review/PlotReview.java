@@ -5,6 +5,7 @@ import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.utils.enums.Slot;
+import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import org.jetbrains.annotations.Nullable;
 
@@ -67,6 +68,7 @@ public class PlotReview {
     public boolean updateFeedback(String feedback) {
         if (DataProvider.REVIEW.updateFeedback(reviewId, feedback)) {
             this.feedback = feedback;
+            DiscordUtil.getOpt(this.plot.getId()).ifPresent(event -> event.onPlotFeedback(feedback));
             return true;
         }
         return false;
@@ -106,6 +108,9 @@ public class PlotReview {
             successful = false;
             PlotSystem.getPlugin().getComponentLogger().error("Failed to remove plot review with ID {} from database!", reviewId);
         }
+
+        DataProvider.PLOT.setCompletedSchematic(plot.getID(), null);
+        DiscordUtil.getOpt(this.plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotUndoReview);
 
         return successful;
     }

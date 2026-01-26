@@ -107,7 +107,7 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
         Builder builder = Builder.byUUID(player.getUniqueId());
         try {
             if (difficulty == null) difficulty = Plot.getPlotDifficultyForBuilder(randomCity, Builder.byUUID(player.getUniqueId())).get();
-            if (difficulty == null) difficulty = PlotDifficulty.EASY;
+            if (difficulty == null) difficulty = PlotDifficulty.RESIDENTIAL;
 
             player.closeInventory();
             new DefaultPlotGenerator(randomCity, difficulty, builder);
@@ -125,7 +125,7 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
             var pd = selectedPlotDifficulty;
             try {
                 if (pd == null) pd = Plot.getPlotDifficultyForBuilder(project, Builder.byUUID(player.getUniqueId())).get();
-                if (pd == null) pd = PlotDifficulty.EASY;
+                if (pd == null) pd = PlotDifficulty.RESIDENTIAL;
 
                 return project.isVisible() && !DataProvider.PLOT.getPlots(project, pd, Status.unclaimed).isEmpty();
             } catch (ExecutionException | InterruptedException e) {

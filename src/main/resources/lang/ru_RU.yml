@@ -426,6 +426,16 @@ database:
       name: 'Средний'
     hard:
       name: 'Сложный'
+    residential:
+      name: 'Residential'
+    low-rise:
+      name: 'Low Rise'
+    mid-rise:
+      name: 'Mid Rise'
+    high-rise:
+      name: 'High Rise'
+    mixed:
+      name: 'Mixed'
   status:
     unclaimed:
       name: 'Свободно'

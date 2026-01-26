@@ -7,11 +7,13 @@ import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.conversion.CoordinateConversion;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.ConfigUtil;
 import com.alpsbte.plotsystem.utils.io.TutorialPaths;
 import com.sk89q.worldedit.math.BlockVector2;
+import com.sk89q.worldedit.math.BlockVector3;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
@@ -170,5 +172,19 @@ public class TutorialPlot extends AbstractPlot {
 
     public static boolean isRequiredAndInProgress(int tutorialId, UUID playerUUID) {
         return PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE) && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_REQUIRE_BEGINNER_TUTORIAL) && isInProgress(tutorialId, playerUUID);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Note: {@link TutorialPlot} modify this method to cancel out (possible) terra offsets</p>
+     */
+    @Override
+    public BlockVector3 getCoordinates() throws IOException {
+        double[] terraOffset = CoordinateConversion.getTerraOffset();
+        BlockVector3 coordinates = super.getCoordinates();
+
+        if(coordinates == null) return null;
+        else return coordinates.add((int) terraOffset[0], 0, (int) terraOffset[1]);
     }
 }
