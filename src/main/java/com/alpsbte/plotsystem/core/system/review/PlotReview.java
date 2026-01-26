@@ -109,7 +109,7 @@ public class PlotReview {
             PlotSystem.getPlugin().getComponentLogger().error("Failed to remove plot review with ID {} from database!", reviewId);
         }
 
-        DataProvider.PLOT.setCompletedSchematic(plot.getID(), null);
+        DataProvider.PLOT.setCompletedSchematic(plot.getId(), null);
         DiscordUtil.getOpt(this.plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotUndoReview);
 
         return successful;

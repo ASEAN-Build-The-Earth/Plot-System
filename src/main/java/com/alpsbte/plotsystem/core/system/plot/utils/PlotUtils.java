@@ -467,8 +467,6 @@ public final class PlotUtils {
 
             for (Plot plot : plots) {
                 LocalDate lastActivity = plot.getLastActivity();
-
-                if(lastActivity == null) continue;
                 long interval = plot.isRejected() ? rejectedInactivityIntervalDays : inactivityIntervalDays;
                 LocalDate abandonDate = lastActivity.plusDays(interval);
 
@@ -579,7 +577,7 @@ public final class PlotUtils {
                     }
                 }
                 // Send to discord
-                DiscordUtil.getOpt(plot.getID()).ifPresent(event -> event.onPlotAbandon(type));
+                DiscordUtil.getOpt(plot.getId()).ifPresent(event -> event.onPlotAbandon(type));
             } catch (IOException | WorldEditException ex) {
                 PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getId() + "!"), ex);
                 return false;
