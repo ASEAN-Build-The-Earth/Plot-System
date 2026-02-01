@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v5
@@ -41,7 +43,19 @@ jobs:
 
       - name: Build with Gradle Wrapper
         run: ./gradlew clean build
-
+      # START ASEAN - Testing
+      - name: Report Test Result
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          check_name: JUnit Test Result
+          report_paths: "**/build/test-results/test/TEST-*.xml"
+          check_title_template: '<code>{{CLASS_NAME}}</code> › {{TEST_NAME}}'
+          detailed_summary: true # display detailed summary of the report
+          include_passed: true # include passed tests in the results table
+          group_suite: true # Group tests by suite name
+          comment: true # send comment in pull request
+      # END ASEAN
       - uses: actions/upload-artifact@v4
         with:
           name: Staging-Build
