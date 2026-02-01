@@ -8,5 +8,6 @@ public class MockPlotSystemPlugin extends PlotSystem {
     public void onEnable() {
         plugin = this;
         pluginEnabled = true;
+        debug = new Debugging();
     }
 }

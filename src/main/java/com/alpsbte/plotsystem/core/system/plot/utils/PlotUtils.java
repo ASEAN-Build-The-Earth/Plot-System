@@ -191,6 +191,8 @@ public final class PlotUtils {
         }
         if (clipboard == null) return null;
 
+        PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, "PlotUtils#getPlotAsRegion");
+
         // No longer supported!
         if (plot.getVersion() < 4) return null;
 
@@ -209,6 +211,10 @@ public final class PlotUtils {
         try (ClipboardReader reader = AbstractPlot.CLIPBOARD_FORMAT.getReader(inputStream)) {
             clipboard = reader.read();
         }
+
+        if(clipboard == null) return null;
+
+        PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, "PlotUtils#getOutlinesSchematicBytes");
 
         Polygonal2DRegion region = new Polygonal2DRegion(
                 BukkitAdapter.adapt(world),
@@ -251,6 +257,8 @@ public final class PlotUtils {
             clipboard = reader.read();
         }
         if (clipboard == null) return false;
+
+        PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, "PlotUtils#savePlotAsSchematic");
 
         CuboidRegion cuboidRegion = getPlotAsRegion(plot);
         if (cuboidRegion == null) return false;
@@ -330,6 +338,8 @@ public final class PlotUtils {
             clipboard = reader.read();
         }
         if (clipboard == null) return null;
+
+        PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, "PlotUtils#convertTerraToPlotXZ");
 
         // Calculate min and max points of schematic
         CuboidRegion plotRegion = getPlotAsRegion(plot);

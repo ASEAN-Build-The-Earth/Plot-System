@@ -157,6 +157,8 @@ public class PlotWorld implements IWorld {
                 clipboard = reader.read();
             }
             if (clipboard != null) {
+                PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, getClass() + "(PlotWorld)#getPlotHeightCentered");
+
                 return (int) clipboard.getRegion().getCenter().y() - clipboard.getMinimumPoint().y();
             }
         }

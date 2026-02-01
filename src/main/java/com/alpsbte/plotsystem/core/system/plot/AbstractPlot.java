@@ -156,7 +156,12 @@ public abstract class AbstractPlot {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(getInitialSchematicBytes());
         try (ClipboardReader reader = CLIPBOARD_FORMAT.getReader(inputStream)) {
             Clipboard clipboard = reader.read();
-            if (clipboard != null) return clipboard.getOrigin();
+
+            if (clipboard != null) {
+                PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, getClass() + "(AbstractPlot)#getCoordinates");
+
+                return clipboard.getOrigin();
+            }
         }
         return null;
     }
@@ -166,6 +171,8 @@ public abstract class AbstractPlot {
         try (ClipboardReader reader = CLIPBOARD_FORMAT.getReader(inputStream)){
             Clipboard clipboard = reader.read();
             if (clipboard != null) {
+                PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, getClass() + "(AbstractPlot)#getCenter");
+
                 Vector3 clipboardCenter = clipboard.getRegion().getCenter();
                 return BlockVector3.at(clipboardCenter.x(), this.getWorld().getPlotHeightCentered(), clipboardCenter.z());
             }
@@ -181,7 +188,9 @@ public abstract class AbstractPlot {
      *
      * @return The center point of the bounding box as a {@link BlockVector2},
      *         will fetch for schematic center by {@link #getCenter()} if the plot does not have outline data.
+     * @deprecated {@link #getCenter()} should do the trick
      */
+    @Deprecated(since = "5.0.1")
     public BlockVector3 getBoundingBoxCenter() {
         if(this.outline == null) {
             return getCenter();
@@ -208,7 +217,7 @@ public abstract class AbstractPlot {
 
         PlotSystem.getPlugin().getComponentLogger().info(text("Checking BoundingBox Center: " + center.toString()));
 
-        return getCenter();
+        return center.toBlockPoint();
     }
 
     /**

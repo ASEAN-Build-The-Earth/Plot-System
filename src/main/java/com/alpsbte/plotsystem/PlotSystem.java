@@ -53,12 +53,14 @@ public class PlotSystem extends JavaPlugin {
     // ASEAN START - Weaken visibility for unit testing
     protected static PlotSystem plugin;
     protected boolean pluginEnabled = false;
+    protected Debugger debug;
     // ASEAN END
 
     @Override
     public void onEnable() {
         YamlFileFactory.registerPlugin(this);
         plugin = this;
+        debug = new Debugger() { };
         Component successPrefix = text("[", DARK_GRAY).append(text("✔", DARK_GREEN)).append(text("]", DARK_GRAY)).append(text(" ", GRAY));
         Component errorPrefix = text("[", DARK_GRAY).append(text("X", RED)).append(text("]", DARK_GRAY)).append(text(" ", GRAY));
 
@@ -195,6 +197,10 @@ public class PlotSystem extends JavaPlugin {
 
     public static PlotSystem getPlugin() {
         return plugin;
+    }
+
+    public Debugger getDebugger() {
+        return debug;
     }
 
     public void initDatabase() throws IOException, SQLException, ClassNotFoundException {

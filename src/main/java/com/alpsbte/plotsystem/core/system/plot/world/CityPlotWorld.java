@@ -1,10 +1,10 @@
 package com.alpsbte.plotsystem.core.system.plot.world;
 
+import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.utils.Utils;
-import com.fastasyncworldedit.core.FaweAPI;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.google.common.annotations.Beta;
@@ -78,6 +78,8 @@ public class CityPlotWorld extends PlotWorld {
             clipboard = reader.read();
         }
         if (clipboard != null) {
+            PlotSystem.getPlugin().getDebugger().debugClipboard(clipboard, getClass() + "(CityPlotWorld)#getWorldHeight");
+
             int plotHeight = clipboard.getMinimumPoint().y();
 
             // Minimum building height for a plot (this should be configurable depending on minecraft build limit)
