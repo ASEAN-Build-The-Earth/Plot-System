@@ -5,6 +5,7 @@ import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotPermissions;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
+import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.utils.Utils;
@@ -56,8 +57,9 @@ public abstract class AbstractPlot {
 
     protected List<BlockVector2> outline;
     protected List<BlockVector2> blockOutline;
+    // START ASEAN - Outline shifting
     protected List<BlockVector2> shiftedOutline;
-
+    // END ASEAN
 
     protected AbstractPlot(int id, UUID plotOwnerUUID) {
         this.id = id;
@@ -241,6 +243,7 @@ public abstract class AbstractPlot {
         return locations;
     }
 
+    // START ASEAN - Outline Shifting
     public final List<BlockVector2> getShiftedOutline() {
         if(this.shiftedOutline != null)
             return this.shiftedOutline;
@@ -255,6 +258,7 @@ public abstract class AbstractPlot {
         this.shiftedOutline = shiftedOutlines;
         return shiftedOutline;
     }
+    // END ASEAN
 
     /**
      * @return the outline of the polygon with one point per Block
@@ -264,7 +268,9 @@ public abstract class AbstractPlot {
             return this.blockOutline;
 
         List<BlockVector2> points = new ArrayList<>();
-        List<BlockVector2> correctOutline = getOutline();
+        // START ASEAN
+        List<BlockVector2> correctOutline = PlotUtils.isPlotOutlineShifted(this)? getShiftedOutline() : getOutline();
+        // END ASEAN
 
         for (int i = 0; i < correctOutline.size() - 1; i++) {
             BlockVector2 b1 = correctOutline.get(i);

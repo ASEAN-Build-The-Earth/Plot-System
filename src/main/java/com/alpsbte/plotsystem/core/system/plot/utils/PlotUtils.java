@@ -705,19 +705,14 @@ public final class PlotUtils {
                         continue;
                     }
 
-                    // ASEAN START
-                        List<BlockVector2> points = plot.getBlockOutline();
-                        BlockVector3 center = plot.getCenter();
+                    List<BlockVector2> points = plot.getBlockOutline();
 
-                    for (BlockVector2 point : points) {
-                        BlockVector2 particle = isPlotOutlineShifted(plot)? BlockVector2.at(point.x() - center.x(), point.z() - center.z()) : point;
-
+                    for (BlockVector2 point : points)
                         if (point.distanceSq(playerPos2D) < 50 * 50) {
                             if (!particleAPIEnabled) {
-                                player.spawnParticle(Particle.FLAME, particle.x(), player.getLocation().getY() + 1, particle.z(), 1, 0.0, 0.0, 0.0, 0);
+                                player.spawnParticle(Particle.FLAME, point.x(), player.getLocation().getY() + 1, point.z(), 1, 0.0, 0.0, 0.0, 0);
                             } else {
-                                Location loc = new Location(player.getWorld(), particle.x(), player.getLocation().getY() + 1, particle.z());
-                    // ASEAN END
+                                Location loc = new Location(player.getWorld(), point.x(), player.getLocation().getY() + 1, point.z());
                                 // create a particle packet
                                 Object packet = particles.FLAME().packet(true, loc);
 
@@ -725,7 +720,6 @@ public final class PlotUtils {
                                 particles.sendPacket(player, packet);
                             }
                         }
-                    }
                 }
             }
         }
