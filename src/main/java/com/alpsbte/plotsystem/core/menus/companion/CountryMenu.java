@@ -98,9 +98,10 @@ public class CountryMenu extends AbstractMenu {
         }
 
         for (Country country : countryProjects) {
+            // START ASEAN - Custom countries slot
             int slot = getCountrySlot(country);
-
             getMenu().getSlot(slot).setClickHandler((clickPlayer, clickInformation) -> new CityProjectMenu(clickPlayer, country, selectedPlotDifficulty));
+            // END ASEAN
         }
 
         Map<Integer, FooterItem> footerItems = CompanionMenu.getFooterItems(45, getMenuPlayer(), player -> new CountryMenu(player, selectedContinent));
@@ -144,9 +145,11 @@ public class CountryMenu extends AbstractMenu {
             int plotsInProgress = DataProvider.PLOT.getPlots(cities, Status.unfinished, Status.unreviewed).size();
             int plotsCompleted = DataProvider.PLOT.getPlots(cities, Status.completed).size();
             int plotsUnclaimed = DataProvider.PLOT.getPlots(cities, Status.unclaimed).size();
+            // START ASEAN - Custom countries slot
             int slot = getCountrySlot(country);
 
             getMenu().getSlot(slot).setItem(new ItemBuilder(item)
+            // END ASEAN
                     .setName(text(country.getName(getMenuPlayer()), AQUA).decoration(BOLD, true))
                     .setLore(new LoreBuilder()
                             .addLine(text(cities.size(), GOLD).append(text(" " + LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.CITIES), GRAY)))
@@ -164,6 +167,7 @@ public class CountryMenu extends AbstractMenu {
         }
     }
 
+    // START ASEAN - Custom countries slot
     /**
      * Special slots for ASEAN countries.
      *
@@ -184,4 +188,5 @@ public class CountryMenu extends AbstractMenu {
             case null, default -> 9 + countryProjects.indexOf(country);
         };
     }
+    // END ASEAN
 }

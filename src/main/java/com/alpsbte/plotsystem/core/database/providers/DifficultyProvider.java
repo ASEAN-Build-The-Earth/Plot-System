@@ -16,7 +16,6 @@ import static net.kyori.adventure.text.Component.text;
 
 public class DifficultyProvider {
     protected static final List<Difficulty> DIFFICULTIES = new ArrayList<>();
-
     public DifficultyProvider() {
         // cache all difficulties
         String qAll = "SELECT difficulty_id, multiplier, score_requirement FROM plot_difficulty;";
@@ -26,6 +25,12 @@ public class DifficultyProvider {
                     String id = rs.getString(1);
                     double multiplier = rs.getDouble(2);
                     int scoreRequirement = rs.getInt(3);
+
+                    // ASEAN START - Exclude default difficulties (We use our customs)
+                    // TODO: Actually remove these from our database
+                    if(id.matches("(?i)(EASY|MEDIUM|HARD)"))
+                        continue;
+                    // ASEAN END
 
                     Difficulty difficulty = new Difficulty(PlotDifficulty.valueOf(id), id, multiplier, scoreRequirement);
                     DIFFICULTIES.add(difficulty); // cache all difficulties
