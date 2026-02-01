@@ -50,8 +50,10 @@ import static net.kyori.adventure.text.format.NamedTextColor.WHITE;
 import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
 public class PlotSystem extends JavaPlugin {
-    private static PlotSystem plugin;
-    private boolean pluginEnabled = false;
+    // ASEAN START - Weaken visibility for unit testing
+    protected static PlotSystem plugin;
+    protected boolean pluginEnabled = false;
+    // ASEAN END
 
     @Override
     public void onEnable() {

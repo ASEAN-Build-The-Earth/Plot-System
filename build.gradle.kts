@@ -47,7 +47,7 @@ dependencies {
     implementation(libs.org.mariadb.jdbc.mariadb.java.client)
     implementation(libs.com.zaxxer.hikaricp)
     implementation(platform(libs.com.intellectualsites.bom.bom.newest))
-    compileOnly("com.fastasyncworldedit:FastAsyncWorldEdit-Core")
+    compileOnly(libs.com.fastasyncworldedit.core)
     compileOnly(libs.com.sk89q.worldguard.worldguard.bukkit)
     compileOnly(libs.multiverse.core)
     compileOnly(libs.com.github.fierioziy.particlenativeapi.particlenativeapi.plugin)
@@ -58,6 +58,19 @@ dependencies {
     compileOnly(libs.commons.io.commons.io)
     compileOnly(libs.io.papermc.paper.paper.api)
     compileOnly(libs.asia.buildtheearth.asean.discord.discord.plotsystem.api)
+
+    // ASEAN START - Testing utilities
+    // Note: We test on old-school worldedit because FAWE is impossible to mock
+    testCompileOnly(libs.com.sk89q.worldedit.core)
+    testCompileOnly(platform(libs.org.junit.junit.bom))
+    testCompileOnly(libs.org.junit.platform.engine)
+    testImplementation(libs.org.junit.jupiter)
+    testImplementation(libs.org.mockbukkit.latest)
+    testImplementation(libs.io.papermc.paper.paper.api)
+    testImplementation(libs.multiverse.core)
+    testImplementation(libs.com.sk89q.worldedit.bukkit)
+    testRuntimeOnly(libs.org.junit.platform.launcher)
+    // ASEAN END
 }
 
 val versionDetails: groovy.lang.Closure<com.palantir.gradle.gitversion.VersionDetails> by extra
@@ -97,6 +110,19 @@ tasks.assemble {
 tasks.jar {
     enabled = false // Disable the default jar task since we are using shadowJar
 }
+
+// START ASEAN - Testing
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+
+    maxHeapSize = "1G"
+
+    testLogging {
+        showStandardStreams = true
+        events("passed")
+    }
+}
+// END ASEAN
 
 tasks.processResources {
     // work around IDEA-296490

@@ -32,8 +32,19 @@ import static net.kyori.adventure.text.Component.text;
 
 public abstract class AbstractPlot {
     public static final double PLOT_VERSION = 4;
-    public static final ClipboardFormat CLIPBOARD_FORMAT = BuiltInClipboardFormat.FAST_V2;
     public static final double LEGACY_VERSION_THRESHOLD = 3;
+    // START ASEAN - Supports Legacy WorldEdit Clipboard
+    public static final ClipboardFormat CLIPBOARD_FORMAT = findFormat();
+
+    private static BuiltInClipboardFormat findFormat() {
+        // Prioritize FAWE "fast" Format
+        for (BuiltInClipboardFormat format : BuiltInClipboardFormat.values()) {
+            if (format.name().equals("FAST_V2")) return format;
+        }
+        // In case we use old-school world-edit
+        return BuiltInClipboardFormat.valueOf("SPONGE_V3_SCHEMATIC");
+    }
+    // END ASEAN
 
     private final int id;
 

@@ -18,7 +18,15 @@ io-papermc-paper-paper-api = "1.21.8-R0.1-SNAPSHOT"
 li-cinnazeyy-langlibs-api = "1.5.1"
 org-mariadb-jdbc-mariadb-java-client = "2.7.4"
 com-intellectualsites-bom-bom-newest = "1.55" # Ref: https://github.com/IntellectualSites/bom
+# ASEAN START
+# - Added Testing Utilities
+# - Added Discord Integrations
 asia-buildtheearth-asean-discord-discord-plotsystem-api = "1.2.3" # Ref: https://github.com/ASEAN-Build-The-Earth/discordsrv-plotsystem
+org-junit-junit-bom = "6.0.2"
+org-mockbukkit = "4.93.0"
+org-bstats = "3.1.0"
+com-sk89q-worldedit = "7.3.18"
+# ASEAN END
 
 [libraries]
 com-alpsbte-alpslib-alpslib-hologram = { module = "com.alpsbte.alpslib:alpslib-hologram", version.ref = "com-alpsbte-alpslib-alpslib-hologram" }
@@ -37,4 +45,16 @@ io-papermc-paper-paper-api = { module = "io.papermc.paper:paper-api", version.re
 li-cinnazeyy-langlibs-api = { module = "li.cinnazeyy:LangLibs-API", version.ref = "li-cinnazeyy-langlibs-api" }
 org-mariadb-jdbc-mariadb-java-client = { module = "org.mariadb.jdbc:mariadb-java-client", version.ref = "org-mariadb-jdbc-mariadb-java-client" }
 com-intellectualsites-bom-bom-newest = { module = "com.intellectualsites.bom:bom-newest", version.ref = "com-intellectualsites-bom-bom-newest" }
+# ASEAN START
+# - Added Testing Utilities
+# - Added Discord Integrations
 asia-buildtheearth-asean-discord-discord-plotsystem-api = { module = "asia.buildtheearth.asean.discord:discord-plotsystem-api", version.ref = "asia-buildtheearth-asean-discord-discord-plotsystem-api" }
+org-junit-junit-bom = { module = "org.junit:junit-bom", version.ref = "org-junit-junit-bom" }
+org-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "org-junit-junit-bom" }
+org-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "org-junit-junit-bom" }
+org-junit-platform-engine = { module = "org.junit.platform:junit-platform-engine", version.ref = "org-junit-junit-bom" }
+org-mockbukkit-latest = { module = "org.mockbukkit.mockbukkit:mockbukkit-v1.21", version.ref = "org-mockbukkit" }
+com-fastasyncworldedit-core = { module = "com.fastasyncworldedit:FastAsyncWorldEdit-Core", version.ref = "com-intellectualsites-bom-bom-newest" }
+com-sk89q-worldedit-core = { module = "com.sk89q.worldedit:worldedit-core", version.ref = "com-sk89q-worldedit" }
+com-sk89q-worldedit-bukkit = { module = "com.sk89q.worldedit:worldedit-bukkit", version.ref = "com-sk89q-worldedit" }
+# ASEAN END
