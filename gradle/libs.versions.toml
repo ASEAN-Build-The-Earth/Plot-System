@@ -26,7 +26,7 @@ git-version = "4.3.0" # https://github.com/palantir/gradle-git-version/releases
 # - Added Discord Integrations
 asia-buildtheearth-asean-discord-discord-plotsystem-api = "1.2.3" # Ref: https://github.com/ASEAN-Build-The-Earth/discordsrv-plotsystem
 org-junit-junit-bom = "6.0.2"
-org-mockbukkit = "4.93.0"
+org-mockbukkit = "4.108.0"
 org-bstats = "3.1.0"
 com-sk89q-worldedit = "7.3.18"
 # ASEAN END
@@ -48,11 +48,6 @@ io-papermc-paper-paper-api = { module = "io.papermc.paper:paper-api", version.re
 li-cinnazeyy-langlibs-api = { module = "li.cinnazeyy:LangLibs-API", version.ref = "li-cinnazeyy-langlibs-api" }
 org-mariadb-jdbc-mariadb-java-client = { module = "org.mariadb.jdbc:mariadb-java-client", version.ref = "org-mariadb-jdbc-mariadb-java-client" }
 com-intellectualsites-bom-bom-newest = { module = "com.intellectualsites.bom:bom-newest", version.ref = "com-intellectualsites-bom-bom-newest" }
-
-[plugins]
-git-version = { id = "com.palantir.git-version", version.ref = "git-version" }
-shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
-
 # ASEAN START
 # - Added Testing Utilities
 # - Added Discord Integrations
@@ -66,3 +61,7 @@ com-fastasyncworldedit-core = { module = "com.fastasyncworldedit:FastAsyncWorldE
 com-sk89q-worldedit-core = { module = "com.sk89q.worldedit:worldedit-core", version.ref = "com-sk89q-worldedit" }
 com-sk89q-worldedit-bukkit = { module = "com.sk89q.worldedit:worldedit-bukkit", version.ref = "com-sk89q-worldedit" }
 # ASEAN END
+
+[plugins]
+git-version = { id = "com.palantir.git-version", version.ref = "git-version" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

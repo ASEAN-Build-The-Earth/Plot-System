@@ -79,7 +79,9 @@ val versionDetails: groovy.lang.Closure<com.palantir.gradle.gitversion.VersionDe
 val details = versionDetails()
 
 group = "com.alpsbte"
-version = "5.0.3" + "-" + details.gitHash + "-SNAPSHOT"
+// ASEAN START - Add ASEAN suffix
+version = "5.0.3-ASEAN" + "-" + details.gitHash + "-SNAPSHOT"
+// ASEAN END
 description = "An easy to use building system for the BuildTheEarth project."
 java.sourceCompatibility = JavaVersion.VERSION_21
 
