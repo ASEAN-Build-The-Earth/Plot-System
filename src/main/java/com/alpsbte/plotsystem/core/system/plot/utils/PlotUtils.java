@@ -265,6 +265,7 @@ public final class PlotUtils {
 
         BlockVector3 plotCenter = plot.getCenter();
 
+        // START ASEAN
         PlotSystem.getPlugin().getComponentLogger().info("Getting Plot region for saving from: {}", cuboidRegion.getCenter());
 
         boolean outlineShifted = isPlotOutlineShifted(plot);
@@ -278,6 +279,7 @@ public final class PlotUtils {
 
             PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion.getCenter());
         }
+        // END ASEAN
 
         // Load finished plot region as cuboid region
         if (!plot.getWorld().loadWorld()) return false;
@@ -289,9 +291,10 @@ public final class PlotUtils {
         try (Clipboard cb = new BlockArrayClipboard(region)) {
 
             // Shift the clipboard to where it is pasted in the world
+            // START ASEAN
             if(outlineShifted) {
                 cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), 0));
-            }
+            } // END ASEAN
             else cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
 
             // Copy the outline region to clipboard
@@ -301,19 +304,17 @@ public final class PlotUtils {
 
             // Write to output stream
             try (ClipboardWriter writer = AbstractPlot.CLIPBOARD_FORMAT.getWriter(outputStream)) {
-                // ASEAN START
+                double initialY = clipboard.getRegion().getMinimumY();
+                double offset = initialY - cuboidRegion.getMinimumY();
+                // START ASEAN
                 // Transform the outline back for saving so that the origin coordinate is the same as the original schematic
                 if(outlineShifted) {
-                    double initialY = clipboard.getRegion().getMinimumY();
-                    double offset = initialY - cuboidRegion.getMinimumY();
                     writer.write(cb.transform(new AffineTransform().translate(Vector3.at(plotCenter.x(), offset, plotCenter.z()))));
                 }
                 else {
-                    double initialY = clipboard.getRegion().getMinimumY();
-                    double offset = initialY - cuboidRegion.getMinimumY();
+                // END ASEAN
                     writer.write(cb.transform(new AffineTransform().translate(Vector3.at(0, offset,0))));
                 }
-                // ASEAN END
             }
         }
 
@@ -357,9 +358,9 @@ public final class PlotUtils {
                 schematicCoords[1] + plotRegion.getMinimumPoint().z()
         };
 
-        // ASEAN START
+        // START ASEAN
         PlotSystem.getPlugin().getComponentLogger().info(text(
-                "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
+            "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
         );
 
         // Tutorial plot does not have global terra server offsets
@@ -386,7 +387,7 @@ public final class PlotUtils {
         PlotSystem.getPlugin().getComponentLogger().info(text(
             "Got TPLL Coord: " + plotCoords[0] + ", " + plotCoords[1])
         );
-        // ASEAN END
+        // END ASEAN
 
         // Return coordinates if they are in the schematic plot region
         ProtectedRegion protectedPlotRegion = plot.getWorld().getProtectedRegion() != null
@@ -399,7 +400,7 @@ public final class PlotUtils {
         return null;
     }
 
-    // ASEAN START Plot Shifting Stradegy
+    // START ASEAN Plot Shifting Strategy
     /**
      * Plot can be configured to be shifted to coordinates (0,0) upon generation; which includes: <ul>
      *     <li>Tutorial plot with version >= 2.</li>
@@ -454,7 +455,7 @@ public final class PlotUtils {
         // Requires configured setting to be enabled
         return enabled && !(plot.getVersion() < requiredVer);
     }
-    // ASEAN END
+    // END ASEAN
 
     public static void checkPlotsForLastActivity() {
         Bukkit.getScheduler().runTaskTimerAsynchronously(PlotSystem.getPlugin(), () -> {
@@ -463,7 +464,7 @@ public final class PlotUtils {
             long inactivityIntervalDays = config.getLong(ConfigPaths.INACTIVITY_INTERVAL, -2);
             long rejectedInactivityIntervalDays = (config.getLong(ConfigPaths.REJECTED_INACTIVITY_INTERVAL) != -1) ? config.getLong(ConfigPaths.REJECTED_INACTIVITY_INTERVAL) : inactivityIntervalDays;
 
-            // ASEAN START
+            // START ASEAN
             int inactivityNotificationDays = config.getInt(ConfigPaths.INACTIVITY_NOTIFICATION_DAYS, 0);
             int inactivityNotificationTime = config.getInt(ConfigPaths.INACTIVITY_NOTIFICATION_TIME, 16);
             if (inactivityIntervalDays == -2 && rejectedInactivityIntervalDays == -2) return;
@@ -496,7 +497,7 @@ public final class PlotUtils {
                     }
                 });
             }
-            // ASEAN END
+            // END ASEAN
         }, 0L, 20 * 60 * 60L); // Check every hour
     }
 

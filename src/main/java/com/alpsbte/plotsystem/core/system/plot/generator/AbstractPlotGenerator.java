@@ -164,9 +164,10 @@ public abstract class AbstractPlotGenerator {
             // Create protected plot region for plot
             World weWorld = new BukkitWorld(world.getBukkitWorld());
 
+            // START ASEAN - Plot Shifting
             BlockVector3 regionCenter = isShiftedPlot? BlockVector3.at(0, plot.getCenter().y(), 0) : plot.getCenter();
-
             CylinderRegion cylinderRegion = new CylinderRegion(weWorld, regionCenter, Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
+            // END ASEAN
 
             ProtectedRegion protectedRegion = new ProtectedPolygonalRegion(world.getRegionName() + "-1", cylinderRegion.polygonize(-1), PlotWorld.MIN_WORLD_HEIGHT, PlotWorld.MAX_WORLD_HEIGHT);
             protectedRegion.setPriority(50);
@@ -314,9 +315,11 @@ public abstract class AbstractPlotGenerator {
             if (pasteMask != null) editSession.setMask(pasteMask);
 
             BlockVector3 plotCenter = world.getPlot().getCenter();
+            // START ASEAN - Plot Shifting
             BlockVector3 worldCenter = PlotUtils.isPlotOutlineShifted(world, type)
                     ? BlockVector3.at(0, pasteY, 0)
                     : BlockVector3.at(plotCenter.x(), pasteY, plotCenter.z());
+            // END ASEAN
 
             Operation clipboardHolder = new ClipboardHolder(clipboard)
                     .createPaste(editSession)

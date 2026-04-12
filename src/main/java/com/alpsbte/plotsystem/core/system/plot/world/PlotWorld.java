@@ -109,7 +109,7 @@ public class PlotWorld implements IWorld {
     @Override
     public boolean teleportPlayer(@NotNull Player player) {
         if (loadWorld() && plot != null) {
-            // ASEAN START
+            // START ASEAN
             BlockVector3 teleportPosition = null;
 
             if(!(plot instanceof TutorialPlot)) {
@@ -120,7 +120,7 @@ public class PlotWorld implements IWorld {
             }
 
             player.teleport(getSpawnPoint(teleportPosition));
-            // ASEAN END
+            // END ASEAN
             return true;
         } else PlotSystem.getPlugin().getComponentLogger().warn(text("Could not teleport player " + player.getName() + " to world " + worldName + "!"));
         return false;

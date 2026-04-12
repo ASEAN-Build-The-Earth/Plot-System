@@ -203,7 +203,7 @@ public class Plot extends AbstractPlot {
     }
 
     public static CompletableFuture<PlotDifficulty> getPlotDifficultyForBuilder(CityProject city, Builder builder) {
-        /* ASEAN START - Custom difficulties
+        /* START ASEAN - Custom difficulties
             TODO: MIGHT change back to upstream easy/medium/hard
             easy: RESIDENTIAL
             medium: LOW_RISE
@@ -246,7 +246,7 @@ public class Plot extends AbstractPlot {
                 return CompletableFuture.completedFuture(PlotDifficulty.HIGH_RISE);
             }
         }
-        // ASEAN END
+        // END ASEAN
         return CompletableFuture.completedFuture(null); // If nothing is available return null
     }
 }

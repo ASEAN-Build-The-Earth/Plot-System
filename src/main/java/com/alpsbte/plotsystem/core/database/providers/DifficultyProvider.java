@@ -26,11 +26,11 @@ public class DifficultyProvider {
                     double multiplier = rs.getDouble(2);
                     int scoreRequirement = rs.getInt(3);
 
-                    // ASEAN START - Exclude default difficulties (We use our customs)
+                    // START ASEAN - Exclude default difficulties (We use our customs)
                     // TODO: Actually remove these from our database
                     if(id.matches("(?i)(EASY|MEDIUM|HARD)"))
                         continue;
-                    // ASEAN END
+                    // END ASEAN
 
                     Difficulty difficulty = new Difficulty(PlotDifficulty.valueOf(id), id, multiplier, scoreRequirement);
                     DIFFICULTIES.add(difficulty); // cache all difficulties
