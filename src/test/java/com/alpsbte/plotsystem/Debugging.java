@@ -1,5 +1,6 @@
 package com.alpsbte.plotsystem;
 
+import com.google.common.cache.CacheBuilder;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import org.jetbrains.annotations.NotNull;
 
@@ -10,14 +11,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Debugging implements Debugger {
 
-    private static final AtomicInteger CALL_COUNT = new AtomicInteger();
+    private final AtomicInteger calls = new AtomicInteger();
+
+    public int getCalls() {
+        return calls.get();
+    }
+
+    public void resetCalls() {
+        calls.set(0);
+    }
 
     @Override
     public void debugClipboard(
             @NotNull Clipboard clipboard,
             @NotNull String from
     ) {
-        int count = CALL_COUNT.incrementAndGet();
+        int count = calls.incrementAndGet();
 
         PlotSystem.getPlugin().getLogger().info(
             "[" + count + "] " + Instant.now()
