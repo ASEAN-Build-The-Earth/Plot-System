@@ -35,8 +35,8 @@ public class DependencyManager {
      * @param worldName Name of the world
      * @return Config path for the world
      */
-    public static @NotNull String getMultiverseInventoriesConfigPath(String worldName) {
-        return DependencyManager.isMultiverseInventoriesEnabled() ? Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Multiverse-Inventories")).getDataFolder() + "/worlds/" + worldName : "";
+    public static @Nullable String getMultiverseInventoriesConfigPath(String worldName) {
+        return DependencyManager.isMultiverseInventoriesEnabled() ? Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Multiverse-Inventories")).getDataFolder() + "/worlds/" + worldName : null;
     }
 
     /**

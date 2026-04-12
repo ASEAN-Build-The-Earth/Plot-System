@@ -730,14 +730,16 @@ public final class PlotUtils {
 
         public static void sendLinkMessages(AbstractPlot plot, Player player) {
             Bukkit.getScheduler().runTaskAsynchronously(PlotSystem.getPlugin(), () -> {
-                Component[] tc = new Component[3];
+                Component[] tc = new Component[4];
 
                 String shortLinkGoogleMaps = null;
                 String shortLinkGoogleEarth = null;
                 String shortLinkOSM = null;
+                String shortLinkAppleLookAround = null;
                 String googleMaps = " Google Maps ";
                 String googleEarthWeb = " Google Earth Web ";
                 String openStreetMap = " Open Street Map ";
+                String appleLookAround = " Apple Maps Look Around ";
                 try {
                     if (PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.SHORTLINK_ENABLE)) {
                         shortLinkGoogleMaps = ShortLink.generateShortLink(plot.getGoogleMapsLink());
@@ -746,15 +748,19 @@ public final class PlotUtils {
                         tc[1] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(googleEarthWeb, GREEN), text(shortLinkGoogleEarth, GREEN)));
                         shortLinkOSM = ShortLink.generateShortLink(plot.getOSMMapsLink());
                         tc[2] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(openStreetMap, GREEN), text(shortLinkOSM, GREEN)));
+                        shortLinkAppleLookAround = ShortLink.generateShortLink(plot.getAppleLookAroundLink());
+                        tc[3] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(appleLookAround, GREEN), text(shortLinkAppleLookAround, GREEN)));
                     } else {
                         tc[0] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(googleMaps, GREEN)));
                         tc[1] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(googleEarthWeb, GREEN)));
                         tc[2] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(openStreetMap, GREEN)));
+                        tc[3] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(appleLookAround, GREEN)));
                     }
 
                     tc[0] = tc[0].clickEvent(ClickEvent.openUrl((shortLinkGoogleMaps != null) ? shortLinkGoogleMaps : plot.getGoogleMapsLink()));
                     tc[1] = tc[1].clickEvent(ClickEvent.openUrl((shortLinkGoogleEarth != null) ? shortLinkGoogleEarth : plot.getGoogleEarthLink()));
                     tc[2] = tc[2].clickEvent(ClickEvent.openUrl((shortLinkOSM != null) ? shortLinkOSM : plot.getOSMMapsLink()));
+                    tc[3] = tc[3].clickEvent(ClickEvent.openUrl((shortLinkAppleLookAround != null) ? shortLinkAppleLookAround : plot.getAppleLookAroundLink()));
                 } catch (IOException | URISyntaxException ex) {
                     PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while creating short link!"), ex);
                 }
@@ -762,6 +768,7 @@ public final class PlotUtils {
                 tc[0] = tc[0].hoverEvent(text(googleMaps));
                 tc[1] = tc[1].hoverEvent(text(googleEarthWeb));
                 tc[2] = tc[2].hoverEvent(text(openStreetMap));
+                tc[3] = tc[3].hoverEvent(text(appleLookAround));
 
                 // Temporary fix for bedrock players
                 Component coords = null;
@@ -771,7 +778,10 @@ public final class PlotUtils {
                     double lon = Double.parseDouble(coordsSplit[1]);
                     DecimalFormat df = new DecimalFormat("##.#####");
                     df.setRoundingMode(RoundingMode.FLOOR);
-                    coords = text(df.format(lat), GREEN).append(text(", ", GRAY)).append(text(df.format(lon), GREEN));
+                    String formattedCoords = df.format(lat) + ", " + df.format(lon);
+                    coords = text(formattedCoords, GREEN)
+                            .clickEvent(ClickEvent.copyToClipboard(formattedCoords))
+                            .hoverEvent(text(LangUtil.getInstance().get(player, LangPaths.Note.Action.CLICK_TO_COPY_TO_CLIPBOARD), GRAY));
                 } catch (IOException ex) {
                     PlotSystem.getPlugin().getComponentLogger().error(text(ex.getMessage()), ex);
                 }
@@ -781,6 +791,7 @@ public final class PlotUtils {
                 player.sendMessage(tc[0]);
                 player.sendMessage(tc[1]);
                 player.sendMessage(tc[2]);
+                player.sendMessage(tc[3]);
                 player.sendMessage(text(MSG_LINE, DARK_GRAY));
 
                 if (plot instanceof Plot p) sendGroupTipMessage(p, player);
