@@ -3,6 +3,7 @@ package com.alpsbte.plotsystem.core.menus;
 import com.alpsbte.alpslib.utils.item.ItemBuilder;
 import com.alpsbte.alpslib.utils.item.LoreBuilder;
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.commands.plot.CMD_Plot_Members;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
@@ -137,8 +138,7 @@ public class PlotActionsMenu extends AbstractMenu {
 
         // Set click event for abandon plot item
         getMenu().getSlot(hasReview ? 14 : 16).setClickHandler((clickPlayer, clickInformation) -> {
-            clickPlayer.closeInventory();
-            clickPlayer.performCommand("plot abandon " + plot.getId());
+            new AbandonConfirmMenu(clickPlayer, plot);
         });
 
         // Set click event for feedback menu button
@@ -160,7 +160,7 @@ public class PlotActionsMenu extends AbstractMenu {
                 }
 
                 FileConfiguration config = PlotSystem.getPlugin().getConfig();
-                if ((getMenuPlayer() == plot.getPlotOwner().getPlayer() || getMenuPlayer().hasPermission("plotsystem.admin")) && config.getBoolean(ConfigPaths.ENABLE_GROUP_SUPPORT)) {
+                if (((getMenuPlayer() == plot.getPlotOwner().getPlayer() && getMenuPlayer().hasPermission(CMD_Plot_Members.PERMISSION)) || getMenuPlayer().hasPermission("plotsystem.admin")) && config.getBoolean(ConfigPaths.ENABLE_GROUP_SUPPORT)) {
                     new PlotMemberMenu(plot, clickPlayer);
                 } else if (plot.getPlotMembers().stream().anyMatch(m -> m.getUUID().equals(getMenuPlayer().getUniqueId()))) {
                     // Leave Plot

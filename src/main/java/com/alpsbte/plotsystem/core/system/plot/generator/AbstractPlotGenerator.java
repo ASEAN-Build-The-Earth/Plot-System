@@ -18,7 +18,6 @@ import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
-import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -254,6 +253,11 @@ public abstract class AbstractPlotGenerator {
     }
 
 
+
+
+
+
+
     /**
      * @return - plot object
      */
@@ -273,7 +277,7 @@ public abstract class AbstractPlotGenerator {
     /**
      * Pastes the schematic to the plot center in the given world
      *
-     * @param pasteMask     - sets a mask for the paste operation, can be null
+     * @param pasteMask     - sets a mask for the paste operation, can be null - if the mast is not null, the paste operation ignores air blocks
      * @param schematicFile - plot/environment schematic file
      * @param world         - world to paste in
      * @param clearArea     - clears the plot area with air before pasting
@@ -321,6 +325,7 @@ public abstract class AbstractPlotGenerator {
             Operation clipboardHolder = new ClipboardHolder(clipboard)
                     .createPaste(editSession)
                     .to(worldCenter)
+                    .ignoreAirBlocks(pasteMask != null)
                     .build();
             Operations.complete(clipboardHolder);
         }

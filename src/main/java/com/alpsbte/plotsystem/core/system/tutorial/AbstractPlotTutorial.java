@@ -94,6 +94,7 @@ public abstract class AbstractPlotTutorial extends AbstractTutorial implements P
     @Override
     public void onPlotSchematicPaste(@NotNull UUID playerUUID, int schematicId) throws IOException {
         if (!getPlayerUUID().toString().equals(playerUUID.toString())) return;
+        if (schematicId < 0) return;
         if (plotGenerator != null && tutorialPlot.getWorld().isWorldGenerated() && tutorialPlot.getWorld().isWorldLoaded()) {
             plotGenerator.generateOutlines(schematicId);
         }
@@ -115,11 +116,15 @@ public abstract class AbstractPlotTutorial extends AbstractTutorial implements P
 
     @Override
     protected void prepareStage(PrepareStageAction action) {
+        AbstractStage stage = currentStage;
+        boolean pasteSchematic = isPasteSchematic;
         Bukkit.getScheduler().runTaskLater(PlotSystem.getPlugin(), () -> {
+            if (stage != currentStage) return;
+
             // paste initial schematic outlines of stage
-            if (isPasteSchematic) {
+            if (pasteSchematic) {
                 try {
-                    onPlotSchematicPaste(getPlayerUUID(), ((AbstractPlotStage) currentStage).getInitSchematicId());
+                    onPlotSchematicPaste(getPlayerUUID(), ((AbstractPlotStage) stage).getInitSchematicId());
                 } catch (IOException ex) {
                     onException(ex);
                     return;
@@ -150,10 +155,13 @@ public abstract class AbstractPlotTutorial extends AbstractTutorial implements P
     @Override
     public void onSwitchWorld(@NotNull UUID playerUUID, int tutorialWorldIndex) {
         if (!getPlayerUUID().toString().equals(playerUUID.toString())) return;
+        int schematicId = ((AbstractPlotStage) currentStage).getInitSchematicId();
+        tutorialPlot.setTutorialSchematic(schematicId);
+
         if (tutorialWorldIndex == 1 && (plotGenerator == null || !plotGenerator.getPlot().getWorld().isWorldGenerated())) {
             plotGenerator = new TutorialPlotGenerator(tutorialPlot, Builder.byUUID(playerUUID));
             try {
-                onPlotSchematicPaste(playerUUID, ((AbstractPlotStage) currentStage).getInitSchematicId());
+                onPlotSchematicPaste(playerUUID, schematicId);
             } catch (IOException ex) {
                 onException(ex);
                 return;

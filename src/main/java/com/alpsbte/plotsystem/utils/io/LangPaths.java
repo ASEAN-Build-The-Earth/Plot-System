@@ -86,6 +86,7 @@ public abstract class LangPaths {
         public static final String SUBMIT = MENU_TITLES + "submit";
         public static final String TELEPORT = MENU_TITLES + "teleport";
         public static final String ABANDON = MENU_TITLES + "abandon";
+        public static final String ABANDON_CONFIRM = MENU_TITLES + "abandon-confirm";
         public static final String UNDO_SUBMIT = MENU_TITLES + "undo-submit";
         public static final String MANAGE_MEMBERS = MENU_TITLES + "manage-members";
         public static final String FEEDBACK = MENU_TITLES + "feedback";
@@ -306,7 +307,7 @@ public abstract class LangPaths {
             public static final String PLAYER_INVITE_TO_REJECTED = ERROR_PREFIX + "player-invite-to-rejected";
             public static final String PLAYER_NEEDS_TO_BE_ON_PLOT = ERROR_PREFIX + "player-needs-to-be-on-plot";
             public static final String PLAYER_NEEDS_HIGHER_SCORE = ERROR_PREFIX + "player-needs-higher-score";
-            public static final String PLAYER_MISSING_TUTORIAL = MESSAGE_PREFIX + "player-missing-tutorial";
+            public static final String PLAYER_MISSING_TUTORIAL = ERROR_PREFIX + "player-missing-tutorial";
 
             public static final String ERROR_OCCURRED = ERROR_PREFIX + "error-occurred";
             public static final String NO_PLOTS_LEFT = ERROR_PREFIX + "no-plots-left";

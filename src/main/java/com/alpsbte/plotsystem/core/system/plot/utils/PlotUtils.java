@@ -1,6 +1,7 @@
 package com.alpsbte.plotsystem.core.system.plot.utils;
 
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.commands.plot.CMD_Plot_Members;
 import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.CityProject;
@@ -76,7 +77,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -211,7 +211,7 @@ public final class PlotUtils {
         }
 
         Polygonal2DRegion region = new Polygonal2DRegion(
-                BukkitAdapter.adapt(world),
+                null,
                 plot.getOutline(),
                 clipboard.getMinimumPoint().y(),
                 clipboard.getMaximumPoint().y()
@@ -262,6 +262,7 @@ public final class PlotUtils {
         boolean outlineShifted = isPlotOutlineShifted(plot);
 
         // Get plot outline
+        // ASEAN START - Outline shifting
         List<BlockVector2> plotOutlines = outlineShifted? plot.getShiftedOutline() : plot.getOutline();
 
         // Shift schematic region to the force (0, 0) paste
@@ -270,25 +271,27 @@ public final class PlotUtils {
 
             PlotSystem.getPlugin().getComponentLogger().info("Shifted Plot region for saving to: {}", cuboidRegion.getCenter());
         }
+        // ASEAN END
 
         // Load finished plot region as cuboid region
         if (!plot.getWorld().loadWorld()) return false;
         com.sk89q.worldedit.world.World world = new BukkitWorld(plot.getWorld().getBukkitWorld());
-        Polygonal2DRegion region = new Polygonal2DRegion(world, plotOutlines, cuboidRegion.getMinimumPoint().y(), cuboidRegion.getMaximumPoint().y());
+        Polygonal2DRegion region = new Polygonal2DRegion(null, plotOutlines, cuboidRegion.getMinimumPoint().y(), cuboidRegion.getMaximumPoint().y());
 
         // Copy and write finished plot clipboard to schematic
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (Clipboard cb = new BlockArrayClipboard(region)) {
 
+            // ASEAN START - Outline shifting
             // Shift the clipboard to where it is pasted in the world
             if(outlineShifted) {
                 cb.setOrigin(BlockVector3.at(0, cuboidRegion.getMinimumY(), 0));
             }
             else cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
+            // ASEAN END
 
             // Copy the outline region to clipboard
-            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
-                    Objects.requireNonNull(region.getWorld()), region, cb, region.getMinimumPoint());
+            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(world, region, cb, region.getMinimumPoint());
             Operations.complete(forwardExtentCopy);
 
             // Write to output stream
@@ -799,7 +802,8 @@ public final class PlotUtils {
         }
 
         public static void sendGroupTipMessage(@NotNull Plot plot, Player player) {
-            if (plot.getPlotMembers().isEmpty() && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.ENABLE_GROUP_SUPPORT)) {
+            if (plot.getPlotMembers().isEmpty() && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.ENABLE_GROUP_SUPPORT)
+                    && player.hasPermission(CMD_Plot_Members.PERMISSION)) {
                 Component tc = text("» ", DARK_GRAY)
                         .append(text(LangUtil.getInstance().get(player, LangPaths.Note.Action.CLICK_TO_PLAY_WITH_FRIENDS), GRAY))
                         .clickEvent(ClickEvent.runCommand("/plot members " + plot.getId()))
