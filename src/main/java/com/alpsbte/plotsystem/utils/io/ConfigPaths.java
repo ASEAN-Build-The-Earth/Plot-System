@@ -7,6 +7,8 @@ public abstract class ConfigPaths {
     // General Behaviour
     public static final String SPAWN_WORLD = "spawn-world";
     public static final String ENABLE_SCORE_REQUIREMENT = "enable-score-requirement";
+    public static final String MAX_OWNED_ACTIVE_PLOTS = "max-owned-active-plots";
+    public static final String COUNT_UNREVIEWED_OWNED_PLOTS = "count-unreviewed-owned-plots";
     public static final String DEV_MODE = "dev-mode";
     public static final String INACTIVITY_INTERVAL = "inactivity-interval";
     public static final String INACTIVITY_NOTIFICATION_TIME = "inactivity-notification-time";
@@ -57,10 +59,15 @@ public abstract class ConfigPaths {
     public static final String SHORTLINK_APIKEY = SHORTLINK + "apikey";
     public static final String SHORTLINK_HOST = SHORTLINK + "host";
 
+    // MAP LINKS
+    public static final String MAP_LINKS = "map-links";
+
     // TUTORIALS
     private static final String TUTORIALS = "tutorials.";
     public static final String TUTORIAL_ENABLE = TUTORIALS + "tutorial-enable";
-    public static final String TUTORIAL_REQUIRE_BEGINNER_TUTORIAL = TUTORIALS + "require-beginner-tutorial";
+    private static final String BEGINNER_TUTORIAL = TUTORIALS + "beginner-tutorial.";
+    public static final String BEGINNER_TUTORIAL_REQUIRED = BEGINNER_TUTORIAL + "required";
+    public static final String BEGINNER_TUTORIAL_START_ON_FIRST_JOIN = BEGINNER_TUTORIAL + "start-on-first-join";
     public static final String TUTORIAL_NPC_NAME = TUTORIALS + "tutorial-npc-name";
     public static final String TUTORIAL_NPC_TEXTURE = TUTORIALS + "tutorial-npc-texture";
     public static final String TUTORIAL_NPC_SIGNATURE = TUTORIALS + "tutorial-npc-signature";

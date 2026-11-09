@@ -18,17 +18,22 @@ spawn-world: default
 # Prevents beginners from generating difficult plots
 enable-score-requirement: true
 
-# How many days of inactivity it will take before a claimed plot is automatically abandoned, -2 disables it
+# Maximum owned plots that count toward the claim limit at the same time (1-3)
+# Remaining slots can still be used when invited as a member on other players' plots
+# Set to 3 to restore the previous behaviour (one owned plot per builder slot)
+max-owned-active-plots: 1
+
+# Whether submitted (unreviewed) owned plots count toward max-owned-active-plots
+# false -> only unfinished plots count; after submit the player can claim another owned plot
+# true  -> unfinished and unreviewed both count (stricter; must wait for review/accept/abandon)
+count-unreviewed-owned-plots: false
+
+# Abandonment policy: unfinished plots become eligible at the start of the day
+# N calendar days after their last owner visit (server time zone).
+# Checked hourly; -2 disables automatic abandonment. This does not schedule notifications.
 inactivity-interval: 14
 
-# How long left (Days) until the plot gets abandon due to inactivity and the system will start pinging owner on discord
-# Be careful, if set >= inactivity-interval will ping the owner every day after plot is created
-inactivity-notification-days: 5
-
-# What local-time in a day to ping the owner discord for their inactive plot (24 Hour)
-inactivity-notification-time: 16
-
-# How many days of inactivity it will take before a rejected plots are automatically abandoned
+# Abandonment policy for rejected plots, in calendar days.
 # Use -1 to use the normal inactivity-interval, -2 disables it
 rejected-inactivity-interval: -1
 
@@ -44,6 +49,7 @@ unfinished-reminder-interval: 20
 # Disable the City Inspiration Mode (Beta) CIM completely for new plots (Temporary Config Setting)
 disable-city-inspiration-mode: false
 
+# START ASEAN
 # -----------------------------------------------------
 # | Coordinates Options
 # | [terra-offset]  -> The terra server coordinates offset.
@@ -59,6 +65,7 @@ coordinates-options:
   plot-shifting:
     enabled: false
     required-version: 4
+# END ASEAN
 
 # -----------------------------------------------------
 # | Supported databases: MariaDB & MySQL
@@ -115,11 +122,36 @@ shortlink:
 
 
 # -----------------------------------------------------
+# | Map Links
+# | Optional overrides for provider links shown in /plot messages.
+# | You can disable defaults or add custom providers.
+# | Supported placeholders in url-template: {lat}, {lon}
+# -----------------------------------------------------
+# map-links:
+#   links:
+#     googleMaps:
+#       enabled: true
+#     googleEarth:
+#       enabled: true
+#     osm:
+#       enabled: true
+#     appleLookAround:
+#       enabled: true
+#     mapillary:
+#       name: "Mapillary"
+#       url-template: "https://www.mapillary.com/app/?lat={lat}&lng={lon}&z=18"
+#       enabled: true
+
+
+# -----------------------------------------------------
 # | Tutorials
 # -----------------------------------------------------
 tutorials:
   tutorial-enable: true
-  require-beginner-tutorial: true
+  beginner-tutorial:
+    required: true
+    # Only applies if 'required' is true
+    start-on-first-join: false
   tutorial-npc-name: 'Bob'
   tutorial-npc-texture: 'ewogICJ0aW1lc3RhbXAiIDogMTY0OTA0MzYzODU3MywKICAicHJvZmlsZUlkIiA6ICI5MWYwNGZlOTBmMzY0M2I1OGYyMGUzMzc1Zjg2ZDM5ZSIsCiAgInByb2ZpbGVOYW1lIiA6ICJTdG9ybVN0b3JteSIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS8yNzgxYjg4ZTllZGNhOGNlNWRlMzk4OTkyYzVjM2Q0NTU0ZmVkYjZmZTFiMTIzMmJkNzIwZWUyMTgyZTY4YTcyIgogICAgfQogIH0KfQ=='
   tutorial-npc-signature: 'OpazPbpK6Z+N4ehJdDORPAc+llPyczl23AEZ0aerldJUzUr15L/1yNLOmyGjo81vgjkGq5LYW43yRImtbQAg0vGHqO3u8M5PhcjKrkuezp2DTS+2nZLoN3r+mRxoUXVWWfwkOKmAzPn7TzLHGprMS6nDwJyXt0y+GQG2TYX1Wt2EsMAHSUwiLu/ykraU+JIbKEKOEaEFTRQJYZE1+I8MjA0s8cZEKokbu8LmIZRJcFvipm+pGLVioCH0z20wo7rPBNKAwDInZIsituKb/2etmaioXHadC31rkJk6PeXu3o6MFEnW20bnY5Dh9cOJQWNEM3jU4d7/DtYEBPzUaZdYoaL44jBAHC0S4pHmrIzHbGXeiSCKvhfVDtQClHtZXHVJFrjLhtW2mhVs/H5fWCah8tr9He4ogIzQ6KRME6SFOFWWmWj2A3emDlAH1lxQwPJhlig+ssuZGHPtib+4Xnq+42qwKRJKb/zmrgRzHR4LH600falI3mFpjDhKCs1hxfULrln//bMRkvb1vnNm7+Z1Zg7y5D6/3A7KNQTFASwldqQYm5dq5NC7/UBICH8Emi3qL4eqvWdFrcuH/B2lnD0rxaqVq18U3T65cGOevxl/p525p/UJSuGSP0fTOoddp/7IjCphZKL8IYVqqQjsu4tBqEQwrnaUk8hJKzGIstVUMSA='
@@ -127,4 +159,4 @@ tutorials:
 
 
 # NOTE: Do not change
-config-version: 4.2
+config-version: 4.5

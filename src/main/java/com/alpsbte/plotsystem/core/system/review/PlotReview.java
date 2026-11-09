@@ -1,11 +1,14 @@
 package com.alpsbte.plotsystem.core.system.review;
 
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.api.event.PlotFeedbackUpdatedEvent;
+import com.alpsbte.plotsystem.api.event.PlotReviewUndoneEvent;
+import com.alpsbte.plotsystem.core.integration.PlotEventSnapshots;
 import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
 import com.alpsbte.plotsystem.utils.enums.Slot;
-import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,7 +71,7 @@ public class PlotReview {
     public boolean updateFeedback(String feedback) {
         if (DataProvider.REVIEW.updateFeedback(reviewId, feedback)) {
             this.feedback = feedback;
-            DiscordUtil.getOpt(this.plot.getId()).ifPresent(event -> event.onPlotFeedback(feedback));
+            PlotHandler.publishEvent(new PlotFeedbackUpdatedEvent(PlotEventSnapshots.review(this)));
             return true;
         }
         return false;
@@ -77,20 +80,12 @@ public class PlotReview {
     public boolean undoReview() {
         // remove owner score and remove plot from slot
         if (!plot.getPlotOwner().addScore(splitScore == -1 ? -score : -splitScore)) return false;
+        if (!restorePlotSlot(plot.getPlotOwner())) return false;
 
-        Slot slot = plot.getPlotOwner().getSlotByPlotId(plot.getId()); // get slot if plot is still in slots (rejected)
-        if (slot == null) slot = plot.getPlotOwner().getFreeSlot(); // get new slot otherwise (completed)
-        if (slot == null) return false;
-
-        if (!plot.getPlotOwner().setSlot(slot, plot.getId())) return false;
-
-        // remove members score and remove plot from slot
+        // remove member's score and remove plot from slot
         for (Builder member : plot.getPlotMembers()) {
             if (!member.addScore(-splitScore)) return false;
-
-            Slot memberSlot = member.getSlotByPlotId(plot.getId());
-            if (memberSlot == null) memberSlot = member.getFreeSlot();
-            if (memberSlot == null || member.setSlot(memberSlot, plot.getId())) return false;
+            if (!restorePlotSlot(member)) return false;
         }
 
         boolean successful = true;
@@ -109,9 +104,28 @@ public class PlotReview {
             PlotSystem.getPlugin().getComponentLogger().error("Failed to remove plot review with ID {} from database!", reviewId);
         }
 
-        DataProvider.PLOT.setCompletedSchematic(plot.getId(), null);
-        DiscordUtil.getOpt(this.plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotUndoReview);
-
+        if (successful) {
+            PlotHandler.publishEvent(new PlotReviewUndoneEvent(PlotEventSnapshots.review(this)));
+        }
         return successful;
+    }
+
+    /**
+     * Tries to assign the plot to a slot again if possible.
+     * If all slots are occupied, the plot won't be assigned to a slot, but still accessible via /plots
+     *
+     * @param builder target builder (owner or member)
+     * @return True if the slot was assigned successfully, false otherwise
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private boolean restorePlotSlot(Builder builder) {
+        Slot slot = builder.getSlotByPlotId(plot.getId()); // get slot if plot is still in slots (rejected)
+        if (slot == null) slot = builder.getFreeSlot(); // get new slot otherwise (completed)
+        if (slot == null) {
+            PlotSystem.getPlugin().getComponentLogger().warn("Skipping slot restore for plot #{} and builder {}. All slots are occupied!", plot.getId(), builder.getName());
+            return true;
+        }
+
+        return builder.setSlot(slot, plot.getId());
     }
 }

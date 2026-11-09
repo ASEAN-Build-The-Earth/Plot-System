@@ -1,0 +1,135 @@
+package com.alpsbte.plotsystem.core.system.plot.generator.world;
+
+import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.DependencyManager;
+import com.alpsbte.plotsystem.utils.Utils;
+import com.alpsbte.plotsystem.utils.io.ConfigPaths;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.RegionGroup;
+import com.sk89q.worldguard.protection.flags.StateFlag;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.managers.storage.StorageException;
+import com.sk89q.worldguard.protection.regions.GlobalProtectedRegion;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.NameFileFilter;
+import org.apache.commons.io.filefilter.NotFileFilter;
+import org.bukkit.Bukkit;
+import org.bukkit.Difficulty;
+import org.bukkit.GameMode;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
+import org.bukkit.entity.SpawnCategory;
+import org.mvplugins.multiverse.core.world.LoadedMultiverseWorld;
+import org.mvplugins.multiverse.core.world.WorldManager;
+import org.mvplugins.multiverse.core.world.options.ImportWorldOptions;
+import org.mvplugins.multiverse.external.vavr.control.Option;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Locale;
+import java.util.Objects;
+
+import static net.kyori.adventure.text.Component.text;
+
+public class PlotWorldGenerator {
+    private final WorldManager worldManager = DependencyManager.getMultiverseCore().getWorldManager();
+    private final String worldName;
+    private static final World.Environment environment = World.Environment.NORMAL;
+
+    public PlotWorldGenerator(String worldName) throws Exception {
+        boolean dev = PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.DEV_MODE);
+        long startTime = System.nanoTime();
+        this.worldName = worldName;
+
+        // Async Part
+        generateWorld();
+
+        // Sync Part
+        long mainThreadStart = System.nanoTime();
+        Utils.runSync(() -> {
+            createMultiverseWorld();
+            configureWorld();
+            createGlobalProtection();
+            return null;
+        }).get();
+
+        if (dev) {
+            PlotSystem.getPlugin().getComponentLogger().info("(PWG) Total time to generate world: {}ms", (System.nanoTime() - startTime) / 1_000_000);
+            PlotSystem.getPlugin().getComponentLogger().info("(PWG) Total time on main thread: {}ms", (System.nanoTime() - mainThreadStart) / 1_000_000);
+        }
+    }
+
+    protected void generateWorld() throws IOException {
+        Path skeletonPath = worldManager.getWorld(SkeletonWorldGenerator.WORLD_KEY.value()).get().getOfflineWorldFolder().toPath();
+        Path worldLevelPath = skeletonPath.getParent().resolve(worldName.toLowerCase(Locale.ROOT));
+        FileUtils.copyDirectory(skeletonPath.toFile(), worldLevelPath.toFile(), new NotFileFilter(new NameFileFilter("metadata.dat")));
+    }
+
+    protected void createMultiverseWorld() {
+        createMultiverseWorld(worldManager, worldName);
+    }
+
+    protected static void createMultiverseWorld(WorldManager worldManager, String worldName) {
+        if (!worldManager.isLoadedWorld(worldName)) {
+            worldManager.importWorld(ImportWorldOptions.worldKey(NamespacedKey.minecraft(worldName.toLowerCase(Locale.ROOT)))
+                    .environment(environment)
+                    .generator("Plot-System")
+                    .useSpawnAdjust(false)
+            );
+        }
+    }
+
+    protected void configureWorld() {
+        configureWorld(worldManager, worldName);
+    }
+
+    protected static void configureWorld(WorldManager worldManager, String worldName) {
+        World world = Bukkit.getWorld(worldName);
+        assert world != null;
+        Option<LoadedMultiverseWorld> mvWorld = worldManager.getLoadedWorld(worldName);
+
+        world.setDifficulty(Difficulty.PEACEFUL);
+        world.setSpawnFlags(false, false);
+        world.setAutoSave(PlotWorld.isCityPlotWorld(worldName));
+
+        // Configure multiverse world
+        mvWorld.get().setAllowFlight(true);
+        mvWorld.get().setGameMode(GameMode.CREATIVE);
+        mvWorld.get().setAllowWeather(false);
+        mvWorld.get().setDifficulty(Difficulty.PEACEFUL);
+        mvWorld.get().getEntitySpawnConfig().getSpawnCategoryConfig(SpawnCategory.ANIMAL).setSpawn(false);
+        mvWorld.get().getEntitySpawnConfig().getSpawnCategoryConfig(SpawnCategory.MONSTER).setSpawn(false);
+        mvWorld.get().setAutoLoad(false);
+        mvWorld.get().setKeepSpawnInMemory(false);
+        worldManager.saveWorldsConfig();
+    }
+
+    protected void createGlobalProtection() throws StorageException {
+        RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(Objects.requireNonNull(Bukkit.getWorld(worldName))));
+
+        if (regionManager != null) {
+            // Create a protected region for the plot world
+            String regionName = "__global__";
+            GlobalProtectedRegion globalRegion = new GlobalProtectedRegion(regionName);
+            globalRegion.setFlag(Flags.ENTRY, StateFlag.State.DENY);
+            globalRegion.setFlag(Flags.ENTRY.getRegionGroupFlag(), RegionGroup.ALL);
+            globalRegion.setFlag(Flags.PASSTHROUGH, StateFlag.State.DENY);
+            globalRegion.setFlag(Flags.PASSTHROUGH.getRegionGroupFlag(), RegionGroup.ALL);
+            globalRegion.setFlag(Flags.TNT, StateFlag.State.DENY);
+            globalRegion.setFlag(Flags.TNT.getRegionGroupFlag(), RegionGroup.ALL);
+            if (DependencyManager.isWorldGuardExtraFlagsEnabled())
+                globalRegion.setFlag(new StateFlag("worldedit", true, RegionGroup.ALL), StateFlag.State.DENY);
+
+            if (regionManager.hasRegion(regionName)) regionManager.removeRegion(regionName);
+            regionManager.addRegion(globalRegion);
+            regionManager.saveChanges();
+        } else PlotSystem.getPlugin().getComponentLogger().warn(text("Region Manager is null!"));
+    }
+}
+
+

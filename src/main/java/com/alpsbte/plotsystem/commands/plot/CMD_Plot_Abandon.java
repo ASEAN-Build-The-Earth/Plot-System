@@ -2,14 +2,15 @@ package com.alpsbte.plotsystem.commands.plot;
 
 import com.alpsbte.alpslib.utils.AlpsUtils;
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.api.model.PlotAbandonReason;
 import com.alpsbte.plotsystem.commands.BaseCommand;
 import com.alpsbte.plotsystem.commands.SubCommand;
 import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
-import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
@@ -67,12 +68,12 @@ public class CMD_Plot_Abandon extends SubCommand {
                 return;
             }
 
-            Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-                if (PlotUtils.Actions.abandonPlot(plot, DiscordUtil.AbandonType.MANUALLY)) {
+            if (PlotHandler.abandonPlot(plot, PlotAbandonReason.MANUAL, player.getUniqueId())) {
+                Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
                     sender.sendMessage(Utils.ChatUtils.getInfoFormat(langUtil.get(sender, LangPaths.Message.Info.ABANDONED_PLOT, plot.getId() + "")));
                     player.playSound(player.getLocation(), Utils.SoundUtils.ABANDON_PLOT_SOUND, 1, 1);
-                }
-            });
+                });
+            }
         });
     }
 

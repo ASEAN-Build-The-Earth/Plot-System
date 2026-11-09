@@ -43,7 +43,11 @@ val paperNextEnabled = providers.gradleProperty("paperNext")
     .map(String::toBoolean)
     .orElse(false)
 
+val guavaPackage = "com.google.guava"
+val gsonPackage = "com.google.code.gson"
+
 dependencies {
+    implementation(project(":plot-system-api"))
     implementation(libs.com.alpsbte.canvas)
     implementation(libs.com.alpsbte.alpslib.alpslib.io)
     implementation(libs.com.alpsbte.alpslib.alpslib.hologram)
@@ -52,9 +56,18 @@ dependencies {
     implementation(libs.com.zaxxer.hikaricp) {
         exclude(group = "org.slf4j")
     }
-    implementation(platform(libs.com.intellectualsites.bom.bom.newest))
-    compileOnly(libs.com.fastasyncworldedit.core)
-    compileOnly(libs.com.sk89q.worldguard.worldguard.bukkit)
+    implementation(platform(libs.com.intellectualsites.bom.bom.newest)) {
+        exclude(group = guavaPackage)
+        exclude(group = gsonPackage)
+    }
+    compileOnly(libs.com.fastasyncworldedit.core) {
+        exclude(group = guavaPackage)
+        exclude(group = gsonPackage)
+    }
+    compileOnly(libs.com.sk89q.worldguard.worldguard.bukkit) {
+        exclude(group = guavaPackage)
+        exclude(group = gsonPackage)
+    }
     compileOnly(libs.multiverse.core)
     compileOnly(libs.com.github.fierioziy.particlenativeapi.particlenativeapi.plugin)
     compileOnly(libs.com.arcaniax.headdatabase.api)
@@ -77,12 +90,10 @@ dependencies {
     testImplementation(libs.com.sk89q.worldedit.bukkit)
     testRuntimeOnly(libs.org.junit.platform.launcher)
     // ASEAN END
-}
 
     if (paperNextEnabled.get()) {
         constraints {
-            compileOnly("io.papermc.paper:paper-api:26.1.2.build.+")
-            compileOnly("com.github.decentsoftware-eu:decentholograms:2.10.0")
+            compileOnly("io.papermc.paper:paper-api:26.2-rc-2.build.+")
         }
     }
 }
@@ -99,6 +110,13 @@ tasks.shadowJar {
     archiveClassifier = ""
     relocationPrefix = "com.alpsbte.plotsystem.shaded"
     enableAutoRelocation = true
+    // MariaDB Connector/J 3.x loads auth plugins/codecs via ServiceLoader.
+    // INCLUDE + mergeServiceFiles keeps META-INF/services entries and rewrites
+    // them to the shaded package so mysql_native_password (etc.) still resolve.
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    mergeServiceFiles()
+
+    relocate("com.alpsbte.plotsystem.api", "com.alpsbte.plotsystem.api")
 }
 
 tasks.assemble {
@@ -150,7 +168,7 @@ tasks.processResources {
 
 val targetJava = providers.gradleProperty("targetJava")
     .map(String::toInt)
-    .orElse(21)
+    .orElse(25)
 
 java {
     toolchain {
@@ -167,16 +185,19 @@ tasks.withType<Javadoc>().configureEach {
     options.encoding = "UTF-8"
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 tasks.register<GradleBuild>("buildPaperNext") {
     group = "verification"
-    description = "Builds against Java 25 and the Paper-next dependency set"
+    description = "Builds against Paper-next dependency set"
 
     tasks = listOf("clean", "build")
 
     startParameter.projectProperties.putAll(
         mapOf(
-            "paperNext" to "true",
-            "targetJava" to "25"
+            "paperNext" to "true"
         )
     )
 }

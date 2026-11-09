@@ -4,9 +4,8 @@ api-version: "1.21"
 name: Plot-System
 description: "${description}"
 author: R3tuxn, Cinnazeyy & Zoriot
-depend: [ LangLibs, FancyNpcs, VoidGen, FastAsyncWorldEdit, Multiverse-Core,
-          DecentHolograms, WorldGuard, HeadDatabase ]
-softdepend: [ WorldGuardExtraFlags, ParticleNativeAPI ]
+depend: [ LangLibs, FancyNpcs, FastAsyncWorldEdit, Multiverse-Core, DecentHolograms, WorldGuard ]
+softdepend: [ WorldGuardExtraFlags, ParticleNativeAPI, HeadDB, HeadDatabase ]
 
 commands:
   cancelchat:
@@ -39,9 +38,15 @@ commands:
   editplot:
     description: Enable/disable build permissions for reviewers on a plot.
     usage: /editplot
+  setdifficulty:
+    description: Changes the difficulty of a plot.
+    usage: /setdifficulty <ID> <Difficulty>
   deleteplot:
     description: Delete a plot from the system.
     usage: /deleteplot <ID>
+  plotmaintenance:
+    description: Admin plot/world maintenance (cleanup leftover P- worlds, rebuild CIM, repair completed schematics).
+    usage: /plotmaintenance <cleanup|cim|repair> ...
   setleaderboard:
     description: Sets the position of a leaderboard.
     usage: /setleaderboard <name>

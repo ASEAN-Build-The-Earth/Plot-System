@@ -221,6 +221,8 @@ public abstract class LangPaths {
             public static final String CLICK_TO_SHOW_OPEN_REVIEWS = ACTION_PREFIX + "click-to-show-open-reviews";
             public static final String CLICK_TO_SHOW_PLOTS = ACTION_PREFIX + "click-to-show-plots";
             public static final String CLICK_TO_PLAY_WITH_FRIENDS = ACTION_PREFIX + "click-to-play-with-friends";
+            public static final String CLICK_TO_CHANGE_VIEW_MODE = ACTION_PREFIX + "click-to-change-view-mode";
+            public static final String CLICK_TO_SELECT_DIFFICULTY = ACTION_PREFIX + "click-to-select-difficulty";
             public static final String TUTORIAL_SHOW_STAGES = ACTION_PREFIX + "tutorial-show-stages";
             public static final String CLICK_TO_OPEN_PLOTS_MENUE = ACTION_PREFIX + "click-to-open-plots-menu";
             public static final String CLICK_TO_TOGGLE = ACTION_PREFIX + "click-to-toggle";
@@ -275,6 +277,10 @@ public abstract class LangPaths {
             public static final String PLAYER_INVITE_ACCEPTED = INFO_PREFIX + "player-invite-accepted";
             public static final String PLAYER_INVITE_TO_ACCEPTED = INFO_PREFIX + "player-invite-to-accepted";
             public static final String PLAYER_INVITE_REJECTED = INFO_PREFIX + "player-invite-rejected";
+            public static final String CHANGED_PLOT_DIFFICULTY = INFO_PREFIX + "changed-plot-difficulty";
+            public static final String PLOT_DIFFICULTY_UNCHANGED = INFO_PREFIX + "plot-difficulty-unchanged";
+            public static final String VIEW_MODE_TIP = INFO_PREFIX + "view-mode-tip";
+            public static final String DIFFICULTY_UNLOCKED = INFO_PREFIX + "difficulty-unlocked";
         }
 
         public static final class Error {
@@ -311,12 +317,16 @@ public abstract class LangPaths {
 
             public static final String ERROR_OCCURRED = ERROR_PREFIX + "error-occurred";
             public static final String NO_PLOTS_LEFT = ERROR_PREFIX + "no-plots-left";
+            public static final String NO_OPEN_PLOTS = ERROR_PREFIX + "no-open-plots";
+            public static final String NO_OTHER_OPEN_PLOTS = ERROR_PREFIX + "no-other-open-plots";
             public static final String PLEASE_WAIT = ERROR_PREFIX + "please-wait";
             public static final String ALL_SLOTS_OCCUPIED = ERROR_PREFIX + "all-slots-occupied";
+            public static final String MAX_OWNED_PLOTS = ERROR_PREFIX + "max-owned-plots";
             public static final String CHAT_INPUT_EXPIRED = ERROR_PREFIX + "chat-input-expired";
             public static final String TUTORIAL_DISABLED = ERROR_PREFIX + "tutorial-disabled";
             public static final String TUTORIAL_ALREADY_RUNNING = ERROR_PREFIX + "tutorial-already-running";
             public static final String REVIEW_NOT_FOUND = ERROR_PREFIX + "review-not-found";
+            public static final String INVALID_PLOT_DIFFICULTY = ERROR_PREFIX + "invalid-plot-difficulty";
         }
     }
 

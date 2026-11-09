@@ -6,12 +6,15 @@ import com.alpsbte.alpslib.io.config.ConfigNotImplementedException;
 import com.alpsbte.alpslib.io.database.DatabaseConfigPaths;
 import com.alpsbte.alpslib.io.database.DatabaseConnection;
 import com.alpsbte.alpslib.utils.AlpsUtils;
-import com.alpsbte.alpslib.utils.head.AlpsHeadEventListener;
+import com.alpsbte.alpslib.utils.head.HeadLookupService;
 import com.alpsbte.plotsystem.commands.CommandManager;
 import com.alpsbte.plotsystem.core.EventListener;
 import com.alpsbte.plotsystem.core.holograms.HologramRegister;
+import com.alpsbte.plotsystem.core.integration.DefaultPlotSnapshotProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
+import com.alpsbte.plotsystem.core.system.plot.generator.world.SkeletonWorldGenerator;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.tutorial.AbstractTutorial;
 import com.alpsbte.plotsystem.core.system.tutorial.BeginnerTutorial;
@@ -22,6 +25,7 @@ import com.alpsbte.plotsystem.core.system.tutorial.utils.TutorialUtils;
 import com.alpsbte.plotsystem.utils.DependencyManager;
 import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
+import com.alpsbte.plotsystem.api.provider.PlotSnapshotProvider;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.ConfigUtil;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
@@ -30,7 +34,9 @@ import de.oliver.fancynpcs.api.FancyNpcsPlugin;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.ServicePriority;
 import org.ipvp.canvas.MenuFunctionListener;
 import org.jetbrains.annotations.NotNull;
 
@@ -54,6 +60,7 @@ public class PlotSystem extends JavaPlugin {
     protected static PlotSystem plugin;
     protected boolean pluginEnabled = false;
     // ASEAN END
+    private HeadLookupService headLookupService;
 
     @Override
     public void onEnable() {
@@ -87,6 +94,11 @@ public class PlotSystem extends JavaPlugin {
         // Initialize database connection
         try {
             initDatabase();
+            Bukkit.getServicesManager().register(
+                    PlotSnapshotProvider.class,
+                    new DefaultPlotSnapshotProvider(),
+                    this,
+                    ServicePriority.Normal);
             getComponentLogger().info(successPrefix.append(text("Successfully initialized database connection.")));
         } catch (Exception ex) {
             getComponentLogger().error(errorPrefix.append(text("Could not initialize database connection.")), ex);
@@ -98,7 +110,7 @@ public class PlotSystem extends JavaPlugin {
         try {
             this.getServer().getPluginManager().registerEvents(new EventListener(), this);
             this.getServer().getPluginManager().registerEvents(new MenuFunctionListener(), this);
-            this.getServer().getPluginManager().registerEvents(new AlpsHeadEventListener(), this);
+            headLookupService = HeadLookupService.createForPlugin(this).registerEvents(this);
             if (getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE))
                 this.getServer().getPluginManager().registerEvents(new TutorialEventListener(), this);
             getComponentLogger().info(successPrefix.append(text("Successfully registered event listeners.")));
@@ -121,14 +133,22 @@ public class PlotSystem extends JavaPlugin {
 
         DecentHologramDisplay.registerPlugin(this);
         HologramRegister.init();
-        PlotUtils.checkPlotsForLastActivity();
         Utils.ChatUtils.checkForChatInputExpiry();
         PlotUtils.Effects.startTimer();
+
+        // Start task that checks for and abandons inactive plots every hour
+        Bukkit.getScheduler().runTaskTimerAsynchronously(PlotSystem.getPlugin(), PlotHandler::abandonInactivePlots, 0L, 20 * 60 * 60L);
 
         // Register tutorials
         if (getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE)) {
             AbstractTutorial.registerTutorials(Collections.singletonList(BeginnerTutorial.class));
-            Bukkit.getScheduler().runTaskTimerAsynchronously(FancyNpcsPlugin.get().getPlugin(), new TutorialNPCTurnTracker(), 0, 1L);
+            Bukkit.getScheduler().runTaskTimer(FancyNpcsPlugin.get().getPlugin(), new TutorialNPCTurnTracker(), 0, 1L);
+        }
+
+        // Generate Skeleton World
+        if (!DependencyManager.getMultiverseCore().getWorldManager().isWorld(SkeletonWorldGenerator.WORLD_KEY.value())) {
+            getComponentLogger().info("No skeleton world found! Generating skeleton world...");
+            new SkeletonWorldGenerator();
         }
 
         // Register discord Integration
@@ -203,5 +223,14 @@ public class PlotSystem extends JavaPlugin {
         try (var con = DatabaseConnection.getConnection(); var s = con.createStatement()) {
             s.execute(initScript);
         }
+    }
+
+    @Override
+    public ChunkGenerator getDefaultWorldGenerator(@NotNull String worldName, String id) {
+        return new SkeletonWorldGenerator.EmptyChunkGenerator();
+    }
+
+    public HeadLookupService getHeadLookupService() {
+        return headLookupService;
     }
 }

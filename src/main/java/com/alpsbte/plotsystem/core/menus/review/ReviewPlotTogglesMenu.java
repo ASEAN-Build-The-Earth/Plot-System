@@ -3,15 +3,18 @@ package com.alpsbte.plotsystem.core.menus.review;
 import com.alpsbte.alpslib.utils.item.ItemBuilder;
 import com.alpsbte.alpslib.utils.item.LoreBuilder;
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.api.event.PlotRejectedEvent;
+import com.alpsbte.plotsystem.api.event.PlotReviewedEvent;
+import com.alpsbte.plotsystem.core.integration.PlotEventSnapshots;
 import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.menus.AbstractMenu;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.review.PlotReview;
 import com.alpsbte.plotsystem.core.system.review.ReviewRating;
 import com.alpsbte.plotsystem.core.system.review.ToggleCriteria;
-import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.chat.ChatInput;
 import com.alpsbte.plotsystem.utils.chat.PlayerFeedbackChatInput;
@@ -20,7 +23,6 @@ import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.alpsbte.plotsystem.utils.items.BaseItems;
 import com.alpsbte.plotsystem.utils.items.MenuItems;
-import com.sk89q.worldedit.WorldEditException;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -32,9 +34,10 @@ import org.ipvp.canvas.mask.BinaryMask;
 import org.ipvp.canvas.mask.Mask;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static net.kyori.adventure.text.Component.text;
 
@@ -82,7 +85,8 @@ public class ReviewPlotTogglesMenu extends AbstractMenu {
         }));
 
         // Set click event for submit item
-        getMenu().getSlot(50).setClickHandler(((player, clickInformation) -> submitReview()));
+        getMenu().getSlot(50).setClickHandler(((player, clickInformation) ->
+                CompletableFuture.runAsync(this::submitReview)));
 
         // Set click event for toggle items
         for (int i = 0; i < Math.min(buildTeamCriteria.size(), 36); i++) {
@@ -129,12 +133,12 @@ public class ReviewPlotTogglesMenu extends AbstractMenu {
         Component reviewerConfirmationMessage;
         if (!isRejected) {
             reviewerConfirmationMessage = Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Info.PLOT_MARKED_REVIEWED, Integer.toString(plot.getId()), getParticipantsString()));
-            if(!acceptPlot(review.getScore(), review.getSplitScore())) return;
-            DiscordUtil.getOpt(plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotApprove);
+            if (!acceptPlot(review.getScore(), review.getSplitScore())) return;
+            PlotHandler.publishEvent(new PlotReviewedEvent(PlotEventSnapshots.review(review)));
         } else {
             reviewerConfirmationMessage = Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Info.PLOT_REJECTED, Integer.toString(plot.getId()), getParticipantsString()));
-            PlotUtils.Actions.undoSubmit(plot);
-            DiscordUtil.getOpt(plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotReject);
+            PlotHandler.undoSubmit(plot);
+            PlotHandler.publishEvent(new PlotRejectedEvent(PlotEventSnapshots.review(review)));
         }
 
         Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
@@ -172,27 +176,36 @@ public class ReviewPlotTogglesMenu extends AbstractMenu {
     }
 
     private boolean acceptPlot(int score, int splitScore) {
-        getMenuPlayer().sendMessage(Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Info.SAVING_PLOT)));
-        Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-            try {
-                if (!PlotUtils.savePlotAsSchematic(plot)) {
-                    getMenuPlayer().sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Error.ERROR_OCCURRED)));
-                    PlotSystem.getPlugin().getComponentLogger().warn(text("Could not save finished plot schematic (ID: " + plot.getId() + ")!"));
-                }
-            } catch (IOException | WorldEditException ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("Could not save finished plot schematic (ID: " + plot.getId() + ")!"), ex);
-            }
+        Utils.runSync(() -> {
+            getMenuPlayer().sendMessage(Utils.ChatUtils.getInfoFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Info.SAVING_PLOT)));
+            return null;
         });
+        try {
+            if (!PlotHandler.savePlotAsSchematic(plot)) {
+                Utils.runSync(() -> {
+                    getMenuPlayer().sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.Message.Error.ERROR_OCCURRED)));
+                    return null;
+                });
+                PlotSystem.getPlugin().getComponentLogger().warn(text("Could not save finished plot schematic (ID: " + plot.getId() + ")!"));
+                return false;
+            }
+        } catch (Exception ex) {
+            PlotSystem.getPlugin().getComponentLogger().error(text("Could not save finished plot schematic (ID: " + plot.getId() + ")!"), ex);
+            return false;
+        }
 
-        plot.setStatus(Status.completed);
+        List<UUID> firstCompletedBuilders = collectBuildersWithoutCompletedPlots();
+
+        if (!plot.setStatus(Status.completed)) return false;
 
         // Remove Plot from Owner
         if (!plot.getPlotOwner().setSlot(plot.getPlotOwner().getSlotByPlotId(plot.getId()), -1)) return false;
 
+        boolean scoreApplied;
         if (plot.getPlotMembers().isEmpty()) {
             // Plot was made alone
             // Builder gets 100% of score
-            return plot.getPlotOwner().addScore(score);
+            scoreApplied = plot.getPlotOwner().addScore(score);
         } else {
             // Plot was made in a group
             // Score gets split between all participants
@@ -205,8 +218,38 @@ public class ReviewPlotTogglesMenu extends AbstractMenu {
                 // Remove Slot from Member
                 if (!builder.setSlot(builder.getSlotByPlotId(plot.getId()), -1)) return false;
             }
+            scoreApplied = true;
         }
-        return true;
+
+        if (scoreApplied) {
+            notifyFirstCompletedBuilders(firstCompletedBuilders);
+        }
+        return scoreApplied;
+    }
+
+    private @NotNull List<UUID> collectBuildersWithoutCompletedPlots() {
+        List<UUID> builders = new ArrayList<>();
+        Builder owner = plot.getPlotOwner();
+        if (DataProvider.PLOT.getPlots(owner, Status.completed).isEmpty()) {
+            builders.add(owner.getUUID());
+        }
+        for (Builder member : plot.getPlotMembers()) {
+            if (DataProvider.PLOT.getPlots(member, Status.completed).isEmpty()) {
+                builders.add(member.getUUID());
+            }
+        }
+        return builders;
+    }
+
+    private static void notifyFirstCompletedBuilders(@NotNull List<UUID> builderUuids) {
+        for (UUID uuid : builderUuids) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player == null || !player.isOnline()) continue;
+            Utils.runSync(() -> {
+                PlotUtils.ChatFormatting.sendDifficultyUnlockedMessage(player);
+                return null;
+            });
+        }
     }
 
     private ItemStack getToggleItem(@NotNull ToggleCriteria criteria, boolean checked) {
@@ -252,11 +295,11 @@ public class ReviewPlotTogglesMenu extends AbstractMenu {
                 .setLore(new LoreBuilder()
                         .addLine(text(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.MenuDescription.SUBMIT_REVIEW), NamedTextColor.GRAY), true)
                         .emptyLine()
-                        .addLine(text( accuracyPointsText + ": ", NamedTextColor.GRAY)
+                        .addLine(text(accuracyPointsText + ": ", NamedTextColor.GRAY)
                                 .append(text(rating.getAccuracyPoints(), NamedTextColor.WHITE)))
-                        .addLine(text( blockPalettePointsText + ": ", NamedTextColor.GRAY)
+                        .addLine(text(blockPalettePointsText + ": ", NamedTextColor.GRAY)
                                 .append(text(rating.getBlockPalettePoints(), NamedTextColor.WHITE)))
-                        .addLine(text( togglesPointsText + ": ", NamedTextColor.GRAY)
+                        .addLine(text(togglesPointsText + ": ", NamedTextColor.GRAY)
                                 .append(text(togglePoints, NamedTextColor.WHITE))
                                 .append(text(" (" + checkedToggles + "/" + totalToggles + " → " + String.format("%.02f", togglePercentage) + "%)", NamedTextColor.DARK_GRAY)))
                         .addLine(text("-----", NamedTextColor.DARK_GRAY))

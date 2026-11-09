@@ -74,7 +74,7 @@ beginner:
   height: 7
   height-offset: 1
   # Blocks and positions for the windows that needs to be placed
-  # Get material name from https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Material.html
+  # Get the material name from https://jd.papermc.io/paper/org/bukkit/inventory/ItemType.html#field-detail
   # NOTE: Material needs to be placeable block!
   window-points:
     - '-7.0;12.0;3.0;minecraft:white_banner'

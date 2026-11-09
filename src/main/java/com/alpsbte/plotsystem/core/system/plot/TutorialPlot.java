@@ -170,6 +170,7 @@ public class TutorialPlot extends AbstractPlot {
     public boolean setTutorialSchematic(int schematicId) {
         if (schematicId < 0) return false;
         currentSchematicId = schematicId;
+        invalidateSchematicMetadata();
         return true;
     }
 
@@ -183,7 +184,7 @@ public class TutorialPlot extends AbstractPlot {
     }
 
     public static boolean isRequiredAndInProgress(int tutorialId, UUID playerUUID) {
-        return PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE) && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_REQUIRE_BEGINNER_TUTORIAL) && isInProgress(tutorialId, playerUUID);
+        return PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE) && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.BEGINNER_TUTORIAL_REQUIRED) && isInProgress(tutorialId, playerUUID);
     }
 
     /**

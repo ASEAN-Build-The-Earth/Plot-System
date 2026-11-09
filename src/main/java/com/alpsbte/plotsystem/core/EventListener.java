@@ -7,8 +7,8 @@ import com.alpsbte.plotsystem.core.menus.review.ReviewMenu;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.CityProject;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
 import com.alpsbte.plotsystem.core.system.plot.TutorialPlot;
-import com.alpsbte.plotsystem.core.system.plot.generator.DefaultPlotGenerator;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.core.system.review.ReviewNotification;
@@ -119,11 +119,15 @@ public class EventListener implements Listener {
         }
     }
 
+    private static boolean isPersistentCityWorld(PlotWorld plotWorld) {
+        return PlotWorld.isCityPlotWorld(plotWorld.getWorldName());
+    }
+
     @EventHandler
     public void onPlayerQuitEvent(@NotNull PlayerQuitEvent event) {
         final World w = event.getPlayer().getWorld();
 
-        DefaultPlotGenerator.playerPlotGenerationHistory.remove(event.getPlayer().getUniqueId());
+        PlotHandler.removePlayerFromGenerationHistory(event.getPlayer().getUniqueId());
         ChatInput.awaitChatInput.remove(event.getPlayer().getUniqueId());
         PlotUtils.Cache.clearCache(event.getPlayer().getUniqueId());
 
@@ -137,7 +141,7 @@ public class EventListener implements Listener {
             }
 
             PlotWorld plotWorld = PlotWorld.getPlotWorldByName(w.getName());
-            if (plotWorld != null && !plotWorld.getWorldName().toLowerCase(Locale.ROOT).startsWith("t-"))
+            if (plotWorld != null && !isPersistentCityWorld(plotWorld) && !plotWorld.getWorldName().toLowerCase(Locale.ROOT).startsWith("t-"))
                 plotWorld.unloadWorld(false);
         }, 60L);
 
@@ -151,7 +155,7 @@ public class EventListener implements Listener {
     public void onPlayerChangedWorldEvent(@NotNull PlayerChangedWorldEvent event) {
         Bukkit.getScheduler().scheduleSyncDelayedTask(PlotSystem.getPlugin(), () -> {
             PlotWorld plotWorld = PlotWorld.getPlotWorldByName(event.getFrom().getName());
-            if (plotWorld != null) plotWorld.unloadWorld(false);
+            if (plotWorld != null && !isPersistentCityWorld(plotWorld)) plotWorld.unloadWorld(false);
         }, 60L);
 
         Utils.updatePlayerInventorySlots(event.getPlayer());
@@ -172,7 +176,7 @@ public class EventListener implements Listener {
     }
 
     @EventHandler
-    public void onlPlayerItemDropEvent(@NotNull PlayerDropItemEvent event) {
+    public void onPlayerItemDropEvent(@NotNull PlayerDropItemEvent event) {
         if (event.getItemDrop().getItemStack().equals(CompanionMenu.getMenuItem(event.getPlayer())) ||
                 event.getItemDrop().getItemStack().equals(ReviewMenu.getMenuItem(event.getPlayer()))) {
             event.setCancelled(true);
@@ -268,8 +272,10 @@ public class EventListener implements Listener {
         // Start or notify the player if he has not completed the beginner tutorial yet (only if required)
         if (TutorialPlot.isRequiredAndInProgress(TutorialCategory.BEGINNER.getId(), player.getUniqueId())) {
             if (!player.hasPlayedBefore()) {
-                Bukkit.getScheduler().runTask(PlotSystem.getPlugin(),
-                        () -> player.performCommand("tutorial " + TutorialCategory.BEGINNER.getId()));
+                // If disabled, the player has to start the tutorial manually
+                if (PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.BEGINNER_TUTORIAL_START_ON_FIRST_JOIN, true))
+                    Bukkit.getScheduler().runTask(PlotSystem.getPlugin(),
+                            () -> player.performCommand("tutorial " + TutorialCategory.BEGINNER.getId()));
             } else {
                 AbstractPlotTutorial.sendTutorialRequiredMessage(player, TutorialCategory.BEGINNER.getId());
                 player.playSound(player.getLocation(), Utils.SoundUtils.NOTIFICATION_SOUND, 1f, 1f);

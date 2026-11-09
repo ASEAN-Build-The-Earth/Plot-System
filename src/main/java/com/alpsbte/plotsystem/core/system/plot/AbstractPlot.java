@@ -9,8 +9,6 @@ import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.utils.Utils;
-import com.alpsbte.plotsystem.utils.conversion.CoordinateConversion;
-import com.alpsbte.plotsystem.utils.conversion.projection.OutOfProjectionBoundsException;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.BuiltInClipboardFormat;
@@ -18,7 +16,6 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.math.BlockVector2;
 import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.math.Vector3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,6 +54,7 @@ public abstract class AbstractPlot {
 
     protected List<BlockVector2> outline;
     protected List<BlockVector2> blockOutline;
+    private volatile SchematicMetadata schematicMetadata;
     // START ASEAN - Outline shifting
     protected List<BlockVector2> shiftedOutline;
     // END ASEAN
@@ -82,6 +80,7 @@ public abstract class AbstractPlot {
 
     /**
      * sets the plot owner of the current plot
+     *
      * @param plotOwner uuid of player
      * @return if true, the execution was successful
      */
@@ -128,24 +127,6 @@ public abstract class AbstractPlot {
     public abstract byte[] getInitialSchematicBytes();
 
     /**
-     * Returns geographic coordinates in numeric format
-     *
-     * @return WG84 EPSG:4979 coordinates as double array {lon,lat} in degrees
-     * @throws IOException fails to load schematic file
-     * @see com.alpsbte.plotsystem.utils.conversion.CoordinateConversion#convertToGeo(double, double)
-     */
-    public String getGeoCoordinates() throws IOException {
-        // Convert MC coordinates to geo coordinates
-        BlockVector3 mcCoordinates = getCoordinates();
-        try {
-            return CoordinateConversion.formatGeoCoordinatesNumeric(CoordinateConversion.convertToGeo(mcCoordinates.x(), mcCoordinates.z()));
-        } catch (OutOfProjectionBoundsException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("Could not convert MC coordinates to geo coordinates!"), ex);
-        }
-        return null;
-    }
-
-    /**
      * Returns in-game Minecraft coordinates on a Terra121 world
      *
      * @return the in-game coordinates (x, z)
@@ -153,63 +134,50 @@ public abstract class AbstractPlot {
      * @see com.alpsbte.plotsystem.utils.conversion.CoordinateConversion#convertFromGeo(double, double)
      */
     public BlockVector3 getCoordinates() throws IOException {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(getInitialSchematicBytes());
-        try (ClipboardReader reader = CLIPBOARD_FORMAT.getReader(inputStream)) {
-            Clipboard clipboard = reader.read();
-            if (clipboard != null) return clipboard.getOrigin();
-        }
-        return null;
+        return getSchematicMetadata().origin();
     }
 
     public BlockVector3 getCenter() {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(getInitialSchematicBytes());
-        try (ClipboardReader reader = CLIPBOARD_FORMAT.getReader(inputStream)){
-            Clipboard clipboard = reader.read();
-            if (clipboard != null) {
-                Vector3 clipboardCenter = clipboard.getRegion().getCenter();
-                return BlockVector3.at(clipboardCenter.x(), this.getWorld().getPlotHeightCentered(), clipboardCenter.z());
-            }
+        try {
+            return getSchematicMetadata().center().withY(this.getWorld().getPlotHeightCentered());
         } catch (IOException ex) {
             PlotSystem.getPlugin().getComponentLogger().error(text("Failed to load schematic file to clipboard!"), ex);
         }
         return null;
     }
 
-    /**
-     * Remap outline points as a rectangular bounding box (minX, minZ, maxZ, maxZ)
-     * then return the center of that bounding box.
-     *
-     * @return The center point of the bounding box as a {@link BlockVector2},
-     *         will fetch for schematic center by {@link #getCenter()} if the plot does not have outline data.
-     */
-    public BlockVector3 getBoundingBoxCenter() {
-        if(this.outline == null) {
-            return getCenter();
+    public SchematicMetadata getSchematicMetadata() throws IOException {
+        SchematicMetadata cachedMetadata = schematicMetadata;
+        if (cachedMetadata != null) return cachedMetadata;
+
+        synchronized (this) {
+            if (schematicMetadata != null) return schematicMetadata;
+            byte[] schematic = getInitialSchematicBytes();
+            if (schematic == null || schematic.length == 0) throw new IOException("Initial schematic is unavailable");
+            try (ClipboardReader reader = CLIPBOARD_FORMAT.getReader(new ByteArrayInputStream(schematic))) {
+                Clipboard clipboard = reader.read();
+                if (clipboard == null) throw new IOException("Could not read schematic metadata");
+                schematicMetadata = new SchematicMetadata(
+                        clipboard.getOrigin(),
+                        clipboard.getMinimumPoint(),
+                        clipboard.getMaximumPoint(),
+                        clipboard.getRegion().getCenter().toBlockPoint()
+                );
+                return schematicMetadata;
+            }
         }
-
-        PlotSystem.getPlugin().getComponentLogger().info(text("Check Outline Center: " + this.getCenter().toString()));
-
-        int minX = this.outline.getFirst().x();
-        int minZ = this.outline.getFirst().z();
-        int maxX = this.outline.getFirst().x();
-        int maxZ = this.outline.getFirst().z();
-
-        // Determines bounding box corner
-        for (BlockVector2 v : this.outline) {
-            int x = v.x();
-            int z = v.z();
-            if (x < minX) minX = x;
-            if (z < minZ) minZ = z;
-            if (x > maxX) maxX = x;
-            if (z > maxZ) maxZ = z;
-        }
-
-        Vector3 center = BlockVector2.at(minX, minZ).add(BlockVector2.at(maxX, maxZ)).toVector3().divide(2);
-
-        PlotSystem.getPlugin().getComponentLogger().info(text("Checking BoundingBox Center: " + center.toString()));
-
-        return getCenter();
     }
+
+    protected void invalidateSchematicMetadata() {
+        schematicMetadata = null;
+    }
+
+    public record SchematicMetadata(
+            BlockVector3 origin,
+            BlockVector3 minimumPoint,
+            BlockVector3 maximumPoint,
+            BlockVector3 center
+    ) {}
 
     /**
      * @return plot permission manager to add or remove build rights
@@ -217,22 +185,6 @@ public abstract class AbstractPlot {
     public PlotPermissions getPermissions() {
         if (plotPermissions == null) plotPermissions = new PlotPermissions(getWorld());
         return plotPermissions;
-    }
-
-    public String getOSMMapsLink() throws IOException {
-        return "https://www.openstreetmap.org/#map=19/" + getGeoCoordinates().replace(",", "/");
-    }
-
-    public String getGoogleMapsLink() throws IOException {
-        return "https://www.google.com/maps/place/" + getGeoCoordinates();
-    }
-
-    public String getGoogleEarthLink() throws IOException {
-        return "https://earth.google.com/web/@" + getGeoCoordinates() + ",0a,1000d,20y,-0h,0t,0r";
-    }
-
-    public String getAppleLookAroundLink() throws IOException {
-        return "https://lookmap.eu.pythonanywhere.com/#c=20/" + getGeoCoordinates().replace(",", "/");
     }
 
     protected List<BlockVector2> getOutlinePoints(String outlinePoints) {

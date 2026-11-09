@@ -1,6 +1,5 @@
 package com.alpsbte.plotsystem.core.menus.tutorial;
 
-import com.alpsbte.alpslib.utils.head.AlpsHeadUtils;
 import com.alpsbte.alpslib.utils.item.ItemBuilder;
 import com.alpsbte.alpslib.utils.item.LoreBuilder;
 import com.alpsbte.plotsystem.PlotSystem;
@@ -25,6 +24,8 @@ import org.bukkit.inventory.ItemStack;
 import org.ipvp.canvas.mask.BinaryMask;
 import org.ipvp.canvas.mask.Mask;
 
+import java.util.Objects;
+
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.NamedTextColor.AQUA;
 import static net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY;
@@ -47,11 +48,11 @@ public class TutorialsMenu extends AbstractMenu {
     @Override
     protected void setPreviewItems() {
         // Load player head
-        ItemStack playerHead = AlpsHeadUtils.getPlayerHead(getMenuPlayer().getUniqueId());
+        ItemStack playerHead = PlotSystem.getPlugin().getHeadLookupService().getPlayerHead(getMenuPlayer().getUniqueId());
 
         // Set player stats item
         getMenu().getSlot(4)
-                .setItem(new ItemBuilder(playerHead)
+                .setItem(new ItemBuilder(Objects.requireNonNull(playerHead))
                         .setName(text(getMenuPlayer().getName(), GOLD, BOLD))
                         .build());
 
@@ -81,7 +82,7 @@ public class TutorialsMenu extends AbstractMenu {
         );
 
         // Set back item
-        getMenu().getSlot(49).setItem(!PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_REQUIRE_BEGINNER_TUTORIAL)
+        getMenu().getSlot(49).setItem(!PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.BEGINNER_TUTORIAL_REQUIRED)
                 || isBeginnerTutorialCompleted ? MenuItems.backMenuItem( getMenuPlayer()) : MenuItems.borderItem());
     }
 
@@ -98,7 +99,7 @@ public class TutorialsMenu extends AbstractMenu {
         getMenu().getSlot(34).setClickHandler((clickPlayer, clickInfo) -> setTutorialClickEvent(-1, clickInfo.getClickType()));
 
         // Set click event for back item
-        if (!PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_REQUIRE_BEGINNER_TUTORIAL) || isBeginnerTutorialCompleted)
+        if (!PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.BEGINNER_TUTORIAL_REQUIRED) || isBeginnerTutorialCompleted)
             getMenu().getSlot(49).setClickHandler((clickPlayer, clickInfo) -> clickPlayer.performCommand("companion"));
     }
 

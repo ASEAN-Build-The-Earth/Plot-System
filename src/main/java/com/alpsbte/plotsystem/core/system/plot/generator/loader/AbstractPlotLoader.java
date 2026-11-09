@@ -1,0 +1,534 @@
+package com.alpsbte.plotsystem.core.system.plot.generator.loader;
+
+import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.core.system.Builder;
+import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
+import com.alpsbte.plotsystem.core.system.plot.generator.world.PlotWorldGenerator;
+import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
+import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
+import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
+import com.alpsbte.plotsystem.utils.DependencyManager;
+import com.alpsbte.plotsystem.utils.Utils;
+import com.alpsbte.plotsystem.utils.io.ConfigPaths;
+import com.alpsbte.plotsystem.utils.io.ConfigUtil;
+import com.alpsbte.plotsystem.utils.io.LangPaths;
+import com.alpsbte.plotsystem.utils.io.LangUtil;
+import com.fastasyncworldedit.core.FaweAPI;
+import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.bukkit.BukkitWorld;
+import com.sk89q.worldedit.extent.Extent;
+import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
+import com.sk89q.worldedit.function.mask.AbstractExtentMask;
+import com.sk89q.worldedit.function.mask.Mask;
+import com.sk89q.worldedit.function.mask.RegionMask;
+import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.math.Vector2;
+import com.sk89q.worldedit.regions.CylinderRegion;
+import com.sk89q.worldedit.regions.Polygonal2DRegion;
+import com.sk89q.worldedit.regions.Region;
+import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.world.World;
+import com.sk89q.worldedit.world.block.BlockTypes;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.domains.DefaultDomain;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.RegionGroup;
+import com.sk89q.worldguard.protection.flags.StateFlag;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.ProtectedPolygonalRegion;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.jetbrains.annotations.NotNull;
+
+import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+
+import static net.kyori.adventure.text.Component.text;
+
+public abstract class AbstractPlotLoader {
+    private static final ConcurrentHashMap<String, Object> WORLD_GENERATION_LOCKS = new ConcurrentHashMap<>();
+
+    protected final AbstractPlot plot;
+    protected final PlotType plotType;
+    protected final PlotWorld plotWorld;
+
+    protected final Builder builder;
+    protected final boolean completionActionsEnabled;
+    private final boolean abandonOnFailure;
+
+    protected byte[] schematicBytes = null;
+    private boolean successful;
+
+    protected AbstractPlotLoader(@NotNull AbstractPlot plot, Builder builder, PlotType plotType, PlotWorld plotWorld) {
+        this(plot, builder, plotType, plotWorld, true);
+    }
+
+    protected AbstractPlotLoader(
+            @NotNull AbstractPlot plot,
+            Builder builder,
+            PlotType plotType,
+            PlotWorld plotWorld,
+            boolean completionActionsEnabled
+    ) {
+        this(plot, builder, plotType, plotWorld, completionActionsEnabled, true);
+    }
+
+    protected AbstractPlotLoader(
+            @NotNull AbstractPlot plot,
+            Builder builder,
+            PlotType plotType,
+            PlotWorld plotWorld,
+            boolean completionActionsEnabled,
+            boolean abandonOnFailure
+    ) {
+        requireAsyncThread("Loading a plot");
+
+        this.plot = plot;
+        this.plotType = plotType;
+        this.plotWorld = plotWorld;
+        this.builder = builder;
+        this.completionActionsEnabled = completionActionsEnabled;
+        this.abandonOnFailure = abandonOnFailure;
+
+        PlotSystem.getPlugin().getComponentLogger().info("Loading plot #{}...", plot.getId());
+        PlotSystem.getPlugin().getComponentLogger().info("Plot Type: {}", plotType.name());
+
+        successful = true;
+        try {
+            generateWorld();
+            loadWorld();
+            fetchSchematicData();
+            createPlotProtection();
+            generateStructure();
+        } catch (Exception e) {
+            successful = false;
+            onException(e);
+        }
+
+        if (successful) onCompletion();
+    }
+
+    protected void generateWorld() throws Exception {
+        ensureWorldGenerated(plotWorld);
+    }
+
+    public static void ensureWorldGenerated(@NotNull PlotWorld world) throws Exception {
+        requireAsyncThread("Generating a plot world");
+        if (Utils.supplySync(world::isWorldGenerated).get()) return;
+
+        Object lock = WORLD_GENERATION_LOCKS.computeIfAbsent(world.getWorldName(), ignored -> new Object());
+        try {
+            synchronized (lock) {
+                if (!Utils.supplySync(world::isWorldGenerated).get()) {
+                    new PlotWorldGenerator(world.getWorldName());
+                }
+            }
+        } finally {
+            WORLD_GENERATION_LOCKS.remove(world.getWorldName(), lock);
+        }
+    }
+
+    protected void loadWorld() throws Exception {
+        Utils.runSync(() -> {
+            if (plotWorld.isWorldLoaded()) return null;
+
+            boolean successful = plotWorld.loadWorld();
+            if (!successful) throw new IOException("Could not load world!");
+            return null;
+        }).get();
+    }
+
+    protected void fetchSchematicData() {
+        this.schematicBytes = plot.getInitialSchematicBytes();
+    }
+
+    protected void createPlotProtection() throws Exception {
+        Utils.runSync(() -> {
+            RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
+            RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(plotWorld.getBukkitWorld()));
+            if (regionManager == null) {
+                PlotSystem.getPlugin().getComponentLogger().warn(text("Region Manager is null!"));
+                return null;
+            }
+
+            int minWorldHeight = getProtectionMinHeight();
+            int maxWorldHeight = plotWorld.getBukkitWorld().getMaxHeight() - 1;
+            // Create build region for plot from the outline of the plot
+            ProtectedRegion protectedBuildRegion = new ProtectedPolygonalRegion(plotWorld.getRegionName(), plot.getOutline(), minWorldHeight, maxWorldHeight);
+            protectedBuildRegion.setPriority(100);
+
+            // Create protected plot region for plot
+            ProtectedRegion protectedRegion = getProtectedRegion();
+
+            // Add plot owner
+            DefaultDomain owner = protectedBuildRegion.getOwners();
+            owner.addPlayer(builder.getUUID());
+            protectedBuildRegion.setOwners(owner);
+
+            // Set protected build region permissions
+            setBuildRegionPermissions(protectedBuildRegion);
+
+            // Set protected region permissions
+            setRegionPermissions(protectedRegion);
+
+            // Add regions and save changes
+            if (regionManager.hasRegion(plotWorld.getRegionName())) regionManager.removeRegion(plotWorld.getRegionName());
+            if (regionManager.hasRegion(plotWorld.getRegionName() + "-1")) regionManager.removeRegion(plotWorld.getRegionName() + "-1");
+            regionManager.addRegion(protectedBuildRegion);
+            regionManager.addRegion(protectedRegion);
+            regionManager.saveChanges();
+            return null;
+        }).get();
+    }
+
+    private @NotNull ProtectedRegion getProtectedRegion() {
+        World weWorld = new BukkitWorld(plotWorld.getBukkitWorld());
+        int minWorldHeight = getProtectionMinHeight();
+        int maxWorldHeight = plotWorld.getBukkitWorld().getMaxHeight() - 1;
+        CylinderRegion cylinderRegion = new CylinderRegion(weWorld, plot.getCenter(), Vector2.at(PlotWorld.PLOT_SIZE, PlotWorld.PLOT_SIZE), minWorldHeight, maxWorldHeight);
+        ProtectedRegion protectedRegion = new ProtectedPolygonalRegion(plotWorld.getRegionName() + "-1", cylinderRegion.polygonize(-1), minWorldHeight, maxWorldHeight);
+        protectedRegion.setPriority(50);
+        return protectedRegion;
+    }
+
+    /**
+     * City plot worlds paste at absolute / shared-offset terra Y, so protection must cover the full
+     * world height range. One-plot worlds keep the legacy {@link PlotWorld#MIN_WORLD_HEIGHT} floor.
+     */
+    private int getProtectionMinHeight() {
+        if (PlotWorld.isCityPlotWorld(plotWorld.getWorldName())) {
+            return plotWorld.getBukkitWorld().getMinHeight();
+        }
+        return PlotWorld.MIN_WORLD_HEIGHT;
+    }
+
+    /**
+     * Sets the permissions for the plot build region only
+     *
+     * @param region build region
+     */
+    protected void setBuildRegionPermissions(@NotNull ProtectedRegion region) {
+        region.setFlag(Flags.BUILD, StateFlag.State.ALLOW);
+        region.setFlag(Flags.BUILD.getRegionGroupFlag(), RegionGroup.OWNERS);
+        if (DependencyManager.isWorldGuardExtraFlagsEnabled())
+            region.setFlag(new StateFlag("worldedit", true, RegionGroup.OWNERS), StateFlag.State.ALLOW);
+    }
+
+    /**
+     * Sets the permissions for the whole plot region
+     *
+     * @param region plot region
+     */
+    protected void setRegionPermissions(@NotNull ProtectedRegion region) {
+        region.setFlag(Flags.ENTRY, StateFlag.State.ALLOW);
+        region.setFlag(Flags.ENTRY.getRegionGroupFlag(), RegionGroup.ALL);
+
+        FileConfiguration config = ConfigUtil.getInstance().configs[1];
+        region.setFlag(Flags.BLOCKED_CMDS, new HashSet<>(getBlockedCommands(config)));
+        region.setFlag(Flags.BLOCKED_CMDS.getRegionGroupFlag(), RegionGroup.ALL);
+    }
+
+    /**
+     * Reads the blocked commands for the plot region from the config
+     *
+     * @param config commands.yml config
+     * @return list of blocked commands
+     */
+    protected List<String> getBlockedCommands(@NotNull FileConfiguration config) {
+        List<String> blockedCommands = config.getStringList(ConfigPaths.BLOCKED_COMMANDS_BUILDERS);
+        blockedCommands.removeIf(c -> c.equals("/cmd1"));
+        return blockedCommands;
+    }
+
+    /**
+     * Generates the structure for the plot
+     */
+    protected void generateStructure() throws Exception {
+        if (plotType.hasEnvironment()) {
+            // The schematic already contains the environment around the plot, so it is pasted as a whole.
+            // City worlds share space: skip schematic air, and only write into fully empty columns
+            // (full Y void) so a new plot never carves or stuffs air pockets inside neighbors.
+            boolean cityWorld = PlotWorld.isCityPlotWorld(plotWorld.getWorldName());
+            runFaweBlocking(() -> pasteSchematic(cityWorld, this.schematicBytes, this.plotWorld, false, cityWorld, cityWorld));
+            return;
+        }
+        runFaweBlocking(() -> pasteSchematic(true, PlotUtils.getOutlinesSchematicBytes(plot, this.schematicBytes), this.plotWorld, true, false));
+    }
+
+    /**
+     * Runs a WorldEdit operation on FAWE's asynchronous task executor.
+     */
+    private static CompletableFuture<Void> runFaweAsync(@NotNull FaweTask task) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        FaweAPI.getTaskManager().async(() -> {
+            try {
+                task.run();
+                future.complete(null);
+            } catch (Exception exception) {
+                future.completeExceptionally(exception);
+            }
+        });
+        return future;
+    }
+
+    /**
+     * Runs a WorldEdit operation on FAWE's asynchronous task executor and waits for it to finish.
+     */
+    public static void runFaweBlocking(@NotNull FaweTask task) throws Exception {
+        requireAsyncThread("Waiting for a WorldEdit operation");
+        try {
+            runFaweAsync(task).get();
+        } catch (ExecutionException exception) {
+            if (exception.getCause() instanceof Exception cause) throw cause;
+            throw exception;
+        }
+    }
+
+    /**
+     * Guards operations that block until the main thread has run part of their work. Calling them on the
+     * main thread stalls the server until the watchdog kicks in, because the work they wait for needs the
+     * very thread that is blocked.
+     */
+    public static void requireAsyncThread(String operation) {
+        if (Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException(operation + " must not happen on the main thread!");
+        }
+    }
+
+    /**
+     * Pastes the schematic to the plot center in the given world
+     *
+     * @param ignoreAir     - if true, the paste operation will ignore air blocks
+     * @param schematicFile - plot/environment schematic file
+     * @param world         - world to paste in
+     * @param clearArea     - clears the plot area with air before pasting
+     * @param offset        - offset for the paste operation
+     */
+    public static void pasteSchematic(boolean ignoreAir, byte[] schematicFile, @NotNull PlotWorld world, boolean clearArea, boolean offset) throws IOException {
+        pasteSchematic(ignoreAir, schematicFile, world, clearArea, offset, false);
+    }
+
+    /**
+     * Pastes the schematic to the plot center in the given world
+     *
+     * @param ignoreAir       - if true, the paste operation will ignore air blocks from the schematic
+     * @param schematicFile   - plot/environment schematic file
+     * @param world           - world to paste in
+     * @param clearArea       - clears the plot area with air before pasting
+     * @param offset          - offset for the paste operation
+     * @param onlyEmptyColumns - if true, only write into XZ columns that are air for the full world
+     *                          height (never overwrite builds or fill basements / indoor air pockets)
+     */
+    public static void pasteSchematic(
+            boolean ignoreAir,
+            byte[] schematicFile,
+            @NotNull PlotWorld world,
+            boolean clearArea,
+            boolean offset,
+            boolean onlyEmptyColumns
+    ) throws IOException {
+        // load world if not loaded already
+        if (!world.loadWorld()) return;
+
+        Clipboard clipboard = readClipboard(schematicFile);
+        BlockVector3 clipboardOrigin = clipboardOriginOrMin(clipboard);
+        int pasteY = resolvePasteY(world, clipboard, clipboardOrigin, offset);
+        PasteYBand yBand = resolvePasteYBand(world, clipboard, clipboardOrigin, pasteY);
+        validatePasteYBand(world, yBand, pasteY, offset);
+
+        if (clearArea) {
+            clearPlotArea(world, offset, yBand);
+        }
+        pasteClipboard(ignoreAir, world, clipboard, pasteY, onlyEmptyColumns, yBand.worldMin(), yBand.worldMax());
+    }
+
+    private static Clipboard readClipboard(byte[] schematicFile) throws IOException {
+        try (ClipboardReader reader = AbstractPlot.CLIPBOARD_FORMAT.getReader(new ByteArrayInputStream(schematicFile))) {
+            return reader.read();
+        }
+    }
+
+    private static BlockVector3 clipboardOriginOrMin(Clipboard clipboard) {
+        BlockVector3 origin = clipboard.getOrigin();
+        return origin != null ? origin : clipboard.getMinimumPoint();
+    }
+
+    private static int resolvePasteY(
+            PlotWorld world,
+            Clipboard clipboard,
+            BlockVector3 clipboardOrigin,
+            boolean offset
+    ) throws IOException {
+        if (!offset) return world.getPlotHeight();
+        return world.getPlotHeight() - clipboard.getMinimumPoint().y() + clipboardOrigin.y();
+    }
+
+    private record PasteYBand(int worldMin, int worldMax, int pasteMinY, int pasteMaxY) {}
+
+    private static PasteYBand resolvePasteYBand(
+            PlotWorld world,
+            Clipboard clipboard,
+            BlockVector3 clipboardOrigin,
+            int pasteY
+    ) {
+        int worldMin = world.getBukkitWorld().getMinHeight();
+        int worldMax = world.getBukkitWorld().getMaxHeight() - 1;
+        int pasteMinY = pasteY + clipboard.getMinimumPoint().y() - clipboardOrigin.y();
+        int pasteMaxY = pasteY + clipboard.getMaximumPoint().y() - clipboardOrigin.y();
+        return new PasteYBand(worldMin, worldMax, pasteMinY, pasteMaxY);
+    }
+
+    private static void validatePasteYBand(PlotWorld world, PasteYBand yBand, int pasteY, boolean offset)
+            throws IOException {
+        if (yBand.pasteMaxY() < yBand.worldMin() || yBand.pasteMinY() > yBand.worldMax()) {
+            throw new IOException("Schematic Y band [" + yBand.pasteMinY() + ", " + yBand.pasteMaxY()
+                    + "] is outside world " + world.getWorldName() + " [" + yBand.worldMin() + ", "
+                    + yBand.worldMax() + "] (pasteY=" + pasteY + ", offset=" + offset + ")");
+        }
+        if (yBand.pasteMinY() < yBand.worldMin() || yBand.pasteMaxY() > yBand.worldMax()) {
+            PlotSystem.getPlugin().getComponentLogger().warn(text(
+                    "Schematic Y band [" + yBand.pasteMinY() + ", " + yBand.pasteMaxY()
+                            + "] is partially outside world " + world.getWorldName() + " ["
+                            + yBand.worldMin() + ", " + yBand.worldMax()
+                            + "] — clipped blocks will be skipped"
+            ));
+        }
+    }
+
+    private static void clearPlotArea(PlotWorld world, boolean offset, PasteYBand yBand) {
+        // Clear only the Y band the schematic will occupy. Full world-height clears leave void
+        // shafts under city plots after abandon/reset.
+        int minY = yBand.worldMin();
+        int maxY = yBand.worldMax();
+        if (offset) {
+            minY = Math.max(minY, yBand.pasteMinY());
+            maxY = Math.min(maxY, yBand.pasteMaxY());
+        }
+        World weWorld = new BukkitWorld(world.getBukkitWorld());
+        try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
+            Polygonal2DRegion polyRegion = new Polygonal2DRegion(
+                    weWorld,
+                    world.getPlot().getOutline(),
+                    minY,
+                    maxY
+            );
+            editSession.setMask(new RegionMask(polyRegion));
+            editSession.setBlocks((Region) polyRegion, Objects.requireNonNull(BlockTypes.AIR).getDefaultState());
+        }
+    }
+
+    private static void pasteClipboard(
+            boolean ignoreAir,
+            PlotWorld world,
+            Clipboard clipboard,
+            int pasteY,
+            boolean onlyEmptyColumns,
+            int worldMin,
+            int worldMax
+    ) {
+        try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world.getBukkitWorld()))) {
+            // Shared city worlds: only fill columns that are still completely empty across full Y.
+            if (onlyEmptyColumns) {
+                editSession.setMask(new EmptyColumnMask(editSession, worldMin, worldMax));
+            }
+            Operation clipboardHolder = new ClipboardHolder(clipboard)
+                    .createPaste(editSession)
+                    .to(BlockVector3.at(world.getPlot().getCenter().x(), pasteY, world.getPlot().getCenter().z()))
+                    .ignoreAirBlocks(ignoreAir)
+                    .build();
+            Operations.complete(clipboardHolder);
+        }
+    }
+
+    /**
+     * Allows edits only in XZ columns where every block from {@code minY}..{@code maxY} is air.
+     * Stronger than a per-cell air mask: skips basements and indoor pockets under existing builds.
+     */
+    private static final class EmptyColumnMask extends AbstractExtentMask {
+        private final int minY;
+        private final int maxY;
+        private final Long2BooleanOpenHashMap columnEmpty = new Long2BooleanOpenHashMap();
+
+        private EmptyColumnMask(Extent extent, int minY, int maxY) {
+            super(extent);
+            this.minY = minY;
+            this.maxY = maxY;
+            columnEmpty.defaultReturnValue(false);
+        }
+
+        @Override
+        public boolean test(BlockVector3 vector) {
+            return test(getExtent(), vector);
+        }
+
+        @Override
+        public boolean test(Extent extent, BlockVector3 vector) {
+            long key = (((long) vector.x()) << 32) ^ (vector.z() & 0xffffffffL);
+            if (columnEmpty.containsKey(key)) {
+                return columnEmpty.get(key);
+            }
+            boolean empty = true;
+            for (int y = minY; y <= maxY; y++) {
+                if (!extent.getBlock(vector.x(), y, vector.z()).getBlockType().getMaterial().isAir()) {
+                    empty = false;
+                    break;
+                }
+            }
+            columnEmpty.put(key, empty);
+            return empty;
+        }
+
+        @Override
+        public Mask copy() {
+            return new EmptyColumnMask(getExtent(), minY, maxY);
+        }
+    }
+
+    protected void onException(Exception e) {
+        if (abandonOnFailure) {
+            try {
+                if (!PlotHandler.abandonPlot(this.plot, com.alpsbte.plotsystem.api.model.PlotAbandonReason.SYSTEM)) {
+                    PlotSystem.getPlugin().getComponentLogger().error("Failed to clean up plot #{} after generation error!", plot.getId());
+                }
+            } catch (Exception ex) {
+                PlotSystem.getPlugin().getComponentLogger().error(text("Failed to clean up plot #{} after generation error!"), plot.getId(), ex);
+            }
+        }
+
+        PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while generating plot #{}!"), plot.getId(), e);
+        Utils.runSync(() -> {
+            if (builder != null && builder.getPlayer() != null) {
+                builder.getPlayer().sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(builder.getPlayer(), LangPaths.Message.Error.ERROR_OCCURRED)));
+                builder.getPlayer().playSound(builder.getPlayer().getLocation(), Utils.SoundUtils.ERROR_SOUND, 1, 1);
+            }
+            return null;
+        });
+    }
+
+    public boolean isSuccessful() {
+        return successful;
+    }
+
+    @FunctionalInterface
+    public interface FaweTask {
+        void run() throws Exception;
+    }
+
+    protected abstract void onCompletion();
+}

@@ -1,12 +1,15 @@
 package com.alpsbte.plotsystem.core.system.plot;
 
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.api.event.PlotActivityChangedEvent;
+import com.alpsbte.plotsystem.api.event.PlotStatusChangedEvent;
+import com.alpsbte.plotsystem.api.model.PlotStatus;
 import com.alpsbte.plotsystem.core.database.DataProvider;
+import com.alpsbte.plotsystem.core.integration.PlotEventSnapshots;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.CityProject;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotType;
 import com.alpsbte.plotsystem.core.system.plot.world.CityPlotWorld;
-import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.core.system.review.PlotReview;
 import com.alpsbte.plotsystem.utils.enums.PlotDifficulty;
@@ -18,24 +21,29 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class Plot extends AbstractPlot {
     private final CityProject cityProject;
-    private final PlotDifficulty difficulty;
+    private PlotDifficulty difficulty;
     private Status status;
     private final String outlineBounds;
-    private LocalDate lastActivity;
+    private LocalDateTime lastActivity;
     private final List<Builder> members;
 
     private CityPlotWorld cityPlotWorld;
 
     public Plot(
             int id, CityProject cityProject, PlotDifficulty difficulty, UUID ownerUUID, Status status,
-            String outlineBounds, LocalDate lastActivity, double version, PlotType type, List<Builder> members) {
+            String outlineBounds, LocalDateTime lastActivity, double version, PlotType type, List<Builder> members) {
         super(id, ownerUUID);
         this.cityProject = cityProject;
         this.difficulty = difficulty;
@@ -54,8 +62,13 @@ public class Plot extends AbstractPlot {
 
     @Override
     public boolean setStatus(@NotNull Status status) {
+        Status previousStatus = this.status;
         if (DataProvider.PLOT.setStatus(getId(), status)) {
             this.status = status;
+            if (previousStatus != status) {
+                PlotHandler.publishEvent(new PlotStatusChangedEvent(
+                        PlotEventSnapshots.plot(this), PlotStatus.valueOf(previousStatus.name().toUpperCase(Locale.ROOT))));
+            }
             return true;
         }
         return false;
@@ -67,6 +80,14 @@ public class Plot extends AbstractPlot {
 
     public PlotDifficulty getDifficulty() {
         return difficulty;
+    }
+
+    public boolean setDifficulty(@NotNull PlotDifficulty difficulty) {
+        if (DataProvider.PLOT.setDifficulty(getId(), difficulty)) {
+            this.difficulty = difficulty;
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -95,14 +116,33 @@ public class Plot extends AbstractPlot {
 
     @Override
     public LocalDate getLastActivity() {
+        return lastActivity == null ? null : lastActivity.toLocalDate();
+    }
+
+    public LocalDateTime getLastActivityTime() {
         return lastActivity;
+    }
+
+    public LocalDate getAbandonmentDate() {
+        if (getStatus() != Status.unfinished || getPlotOwner() == null || lastActivity == null) return null;
+        var config = PlotSystem.getPlugin().getConfig();
+        return new PlotAbandonmentPolicy(
+                config.getLong(ConfigPaths.INACTIVITY_INTERVAL),
+                config.getLong(ConfigPaths.REJECTED_INACTIVITY_INTERVAL))
+                .abandonmentDate(getStatus(), getLastActivity(), isRejected());
     }
 
     @Override
     public boolean setLastActivity(boolean setNull) {
-        LocalDate activityDate = setNull ? null : LocalDate.now();
-        if (DataProvider.PLOT.setLastActivity(getId(), activityDate)) {
-            this.lastActivity = activityDate;
+        LocalDateTime activityTime = setNull ? null : LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+        LocalDateTime previousActivity = lastActivity;
+        if (DataProvider.PLOT.setLastActivityTime(getId(), activityTime)) {
+            this.lastActivity = activityTime;
+            if (!Objects.equals(previousActivity, activityTime)) {
+                PlotHandler.publishEvent(new PlotActivityChangedEvent(
+                        PlotEventSnapshots.plot(this), previousActivity == null ? null
+                                : previousActivity.atZone(ZoneId.systemDefault()).toInstant()));
+            }
             return true;
         }
         return false;
@@ -127,14 +167,8 @@ public class Plot extends AbstractPlot {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends PlotWorld> T getWorld() {
-        if (getVersion() <= 2 || getPlotType().hasOnePlotPerWorld()) {
-            if (onePlotWorld == null) onePlotWorld = new OnePlotWorld(this);
-            return (T) onePlotWorld;
-        } else {
-            if (cityPlotWorld == null) cityPlotWorld = new CityPlotWorld(this);
-            return (T) cityPlotWorld;
-        }
+    public PlotWorld getWorld() {
+        return PlotWorld.getByType(getPlotType(), this);
     }
 
     @Override

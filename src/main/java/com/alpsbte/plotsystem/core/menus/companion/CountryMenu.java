@@ -2,29 +2,32 @@ package com.alpsbte.plotsystem.core.menus.companion;
 
 import com.alpsbte.alpslib.utils.item.ItemBuilder;
 import com.alpsbte.alpslib.utils.item.LoreBuilder;
-import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.menus.AbstractMenu;
-import com.alpsbte.plotsystem.core.menus.tutorial.TutorialsMenu;
+import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.CityProject;
 import com.alpsbte.plotsystem.core.system.Country;
+import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Continent;
 import com.alpsbte.plotsystem.utils.enums.PlotDifficulty;
 import com.alpsbte.plotsystem.utils.enums.Status;
-import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.alpsbte.plotsystem.utils.items.MenuItems;
+import net.kyori.adventure.text.TextComponent;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.ipvp.canvas.mask.BinaryMask;
 import org.ipvp.canvas.mask.Mask;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.NamedTextColor.AQUA;
@@ -32,13 +35,16 @@ import static net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY;
 import static net.kyori.adventure.text.format.NamedTextColor.GOLD;
 import static net.kyori.adventure.text.format.NamedTextColor.GRAY;
 import static net.kyori.adventure.text.format.NamedTextColor.GREEN;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 import static net.kyori.adventure.text.format.NamedTextColor.WHITE;
 import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 
 public class CountryMenu extends AbstractMenu {
     private List<Country> countryProjects;
     private final Continent selectedContinent;
+    // START ASEAN - EASY -> RESIDENTIAL plot difficulty
     private PlotDifficulty selectedPlotDifficulty = PlotDifficulty.RESIDENTIAL;
+    // END ASEAN
 
     CountryMenu(Player player, @NotNull Continent continent) {
         super(6, LangUtil.getInstance().get(player, continent.langPath) + " → " + LangUtil.getInstance().get(player, LangPaths.MenuTitle.COMPANION_SELECT_COUNTRY), player);
@@ -58,8 +64,7 @@ public class CountryMenu extends AbstractMenu {
         getMenu().getSlot(6).setItem(CompanionMenu.getDifficultyItem(getMenuPlayer(), selectedPlotDifficulty));
 
         // Set tutorial item
-        getMenu().getSlot(7).setItem(PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE) ?
-                TutorialsMenu.getTutorialItem(getMenuPlayer()) : MenuItems.borderItem());
+        getMenu().getSlot(7).setItem(CompanionMenu.getTutorialSlotItem(getMenuPlayer()));
 
         Map<Integer, FooterItem> footerItems = CompanionMenu.getFooterItems(45, getMenuPlayer(), player -> new CountryMenu(player, selectedContinent));
         footerItems.forEach((index, footerItem) -> getMenu().getSlot(index).setItem(footerItem.item()));
@@ -76,11 +81,11 @@ public class CountryMenu extends AbstractMenu {
 
     @Override
     protected void setItemClickEventsAsync() {
-        getMenu().getSlot(0).setClickHandler((clickPlayer, clickInformation) ->  // Set click event for random selection item
-                generateRandomPlot(clickPlayer, countryProjects, selectedPlotDifficulty));
+        getMenu().getSlot(0).setClickHandler((clickPlayer, _) ->  // Set click event for random selection item
+                CompletableFuture.runAsync(() -> generateRandomPlot(clickPlayer, countryProjects, selectedPlotDifficulty)));
 
         // Set click event for plots difficulty item
-        getMenu().getSlot(6).setClickHandler((clickPlayer, clickInformation) -> {
+        getMenu().getSlot(6).setClickHandler((clickPlayer, _) -> {
             selectedPlotDifficulty = (selectedPlotDifficulty == null ?
                     PlotDifficulty.values()[0] : selectedPlotDifficulty.ordinal() != PlotDifficulty.values().length - 1 ?
                     PlotDifficulty.values()[selectedPlotDifficulty.ordinal() + 1] : null);
@@ -91,16 +96,16 @@ public class CountryMenu extends AbstractMenu {
             setCountryItems();
         });
 
-        CompanionMenu.clickEventTutorialItem(getMenu());
+        CompanionMenu.clickEventTutorialItem(getMenu(), getMenuPlayer());
 
         if (CompanionMenu.hasContinentView()) {
-            getMenu().getSlot(0).setClickHandler((clickPlayer, clickInformation) -> new ContinentMenu(clickPlayer));
+            getMenu().getSlot(0).setClickHandler((clickPlayer, _) -> new ContinentMenu(clickPlayer));
         }
 
         for (Country country : countryProjects) {
             // START ASEAN - Custom countries slot
             int slot = getCountrySlot(country);
-            getMenu().getSlot(slot).setClickHandler((clickPlayer, clickInformation) -> new CityProjectMenu(clickPlayer, country, selectedPlotDifficulty));
+            getMenu().getSlot(slot).setClickHandler((clickPlayer, _) -> new CityProjectMenu(clickPlayer, country, selectedPlotDifficulty));
             // END ASEAN
         }
 
@@ -137,6 +142,9 @@ public class CountryMenu extends AbstractMenu {
             getMenu().getSlot(1).setItem(MenuItems.borderItem());
         }
 
+        Player player = getMenuPlayer();
+        Builder builder = Builder.byUUID(player.getUniqueId());
+
         for (Country country : countryProjects) {
             ItemStack item = country.getCountryItem();
 
@@ -144,24 +152,25 @@ public class CountryMenu extends AbstractMenu {
             int plotsOpen = DataProvider.PLOT.getPlots(cities, Status.unclaimed).size();
             int plotsInProgress = DataProvider.PLOT.getPlots(cities, Status.unfinished, Status.unreviewed).size();
             int plotsCompleted = DataProvider.PLOT.getPlots(cities, Status.completed).size();
-            int plotsUnclaimed = DataProvider.PLOT.getPlots(cities, Status.unclaimed).size();
+            int plotsOpenForPlayer = countOpenPlotsForDifficulty(cities, selectedPlotDifficulty, builder);
             // START ASEAN - Custom countries slot
             int slot = getCountrySlot(country);
 
             getMenu().getSlot(slot).setItem(new ItemBuilder(item)
             // END ASEAN
-                    .setName(text(country.getName(getMenuPlayer()), AQUA).decoration(BOLD, true))
+                    .setName(text(country.getName(player), AQUA).decoration(BOLD, true))
                     .setLore(new LoreBuilder()
-                            .addLine(text(cities.size(), GOLD).append(text(" " + LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.CITIES), GRAY)))
+                            .addLine(text(cities.size(), GOLD).append(text(" " + LangUtil.getInstance().get(player, LangPaths.CityProject.CITIES), GRAY)))
                             .emptyLine()
-                            .addLines(text(plotsOpen, GOLD).append(text(" " + LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.PROJECT_OPEN), GRAY)),
-                                    text("---------------------", DARK_GRAY),
-                                    text(plotsInProgress, GOLD).append(text(" " + LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.PROJECT_IN_PROGRESS), GRAY)),
-                                    text(plotsCompleted, GOLD).append(text(" " + LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.PROJECT_COMPLETED), GRAY)))
+                            .addLine(text(plotsOpen, GOLD)
+                                    .append(text(" " + LangUtil.getInstance().get(player, LangPaths.CityProject.PROJECT_OPEN) + " ", GRAY))
+                                    .append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.CityProject.FOR_YOUR_DIFFICULTY, DARK_GRAY,
+                                            text(plotsOpenForPlayer + " ", plotsOpenForPlayer == 0 ? RED : GREEN))))
+                            .addLine(text("---------------------", DARK_GRAY))
+                            .addLine(text(plotsInProgress, GOLD).append(text(" " + LangUtil.getInstance().get(player, LangPaths.CityProject.PROJECT_IN_PROGRESS), GRAY)))
+                            .addLine(text(plotsCompleted, GOLD).append(text(" " + LangUtil.getInstance().get(player, LangPaths.CityProject.PROJECT_COMPLETED), GRAY)))
                             .emptyLine()
-                            .addLine(plotsUnclaimed > 0
-                                    ? text(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.PROJECT_PLOTS_AVAILABLE), GREEN).decoration(BOLD, true)
-                                    : text(LangUtil.getInstance().get(getMenuPlayer(), LangPaths.CityProject.PROJECT_NO_PLOTS_AVAILABLE), WHITE).decoration(BOLD, true))
+                            .addLine(getAvailabilityLore(player, selectedPlotDifficulty, plotsOpenForPlayer))
                             .build())
                     .build());
         }
@@ -189,4 +198,37 @@ public class CountryMenu extends AbstractMenu {
         };
     }
     // END ASEAN
+
+    private static TextComponent getAvailabilityLore(@NotNull Player player,
+                                                     @Nullable PlotDifficulty selectedPlotDifficulty,
+                                                     int plotsOpenForPlayer) {
+        if (plotsOpenForPlayer <= 0) {
+            return text(LangUtil.getInstance().get(player, LangPaths.CityProject.PROJECT_NO_PLOTS_AVAILABLE), WHITE).decoration(BOLD, true);
+        }
+        if (selectedPlotDifficulty != null) {
+            return Utils.ItemUtils.getFormattedDifficulty(selectedPlotDifficulty, player);
+        }
+        return text(LangUtil.getInstance().get(player, LangPaths.CityProject.PROJECT_PLOTS_AVAILABLE), GREEN).decoration(BOLD, true);
+    }
+
+    private static int countOpenPlotsForDifficulty(@NotNull List<CityProject> cities,
+                                                   @Nullable PlotDifficulty selectedPlotDifficulty,
+                                                   @NotNull Builder builder) {
+        int openForDifficulty = 0;
+        try {
+            for (CityProject city : cities) {
+                PlotDifficulty difficulty = selectedPlotDifficulty != null
+                        ? selectedPlotDifficulty
+                        : Plot.getPlotDifficultyForBuilder(city, builder).get();
+                if (difficulty != null) {
+                    openForDifficulty += DataProvider.PLOT.getPlots(city, difficulty, Status.unclaimed).size();
+                }
+            }
+        } catch (ExecutionException | InterruptedException ex) {
+            Utils.logSqlException(ex);
+            Thread.currentThread().interrupt();
+            return 0;
+        }
+        return openForDifficulty;
+    }
 }

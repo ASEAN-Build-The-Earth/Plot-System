@@ -1,5 +1,9 @@
 package com.alpsbte.plotsystem.core.system.plot.utils;
 
+import com.alpsbte.alpslib.utils.MapLink;
+import com.alpsbte.alpslib.utils.MapLinkEntryConfig;
+import com.alpsbte.alpslib.utils.MapLinks;
+import com.alpsbte.alpslib.utils.MapLinksConfig;
 import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.commands.plot.CMD_Plot_Members;
 import com.alpsbte.plotsystem.core.database.DataProvider;
@@ -7,10 +11,6 @@ import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.CityProject;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
-import com.alpsbte.plotsystem.core.system.plot.TutorialPlot;
-import com.alpsbte.plotsystem.core.system.plot.generator.AbstractPlotGenerator;
-import com.alpsbte.plotsystem.core.system.plot.world.CityPlotWorld;
-import com.alpsbte.plotsystem.core.system.plot.world.OnePlotWorld;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
 import com.alpsbte.plotsystem.core.system.review.PlotReview;
 import com.alpsbte.plotsystem.core.system.review.ReviewNotification;
@@ -18,44 +18,34 @@ import com.alpsbte.plotsystem.utils.DependencyManager;
 import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.ShortLink;
 import com.alpsbte.plotsystem.utils.Utils;
-import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.conversion.CoordinateConversion;
-import com.alpsbte.plotsystem.utils.io.ConfigUtil;
+import com.alpsbte.plotsystem.utils.conversion.projection.OutOfProjectionBoundsException;
+import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.github.fierioziy.particlenativeapi.api.ParticleNativeAPI;
 import com.github.fierioziy.particlenativeapi.api.Particles_1_13;
 import com.github.fierioziy.particlenativeapi.plugin.ParticleNativePlugin;
-import com.sk89q.worldedit.WorldEditException;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.extent.clipboard.BlockArrayClipboard;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
-import com.sk89q.worldedit.function.mask.BlockTypeMask;
-import com.sk89q.worldedit.function.mask.Mask;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector2;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.Vector3;
-import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Polygonal2DRegion;
-import com.sk89q.worldedit.world.block.BlockTypes;
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
@@ -69,11 +59,9 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -176,36 +164,33 @@ public final class PlotUtils {
     }
 
     public static boolean isPlayerOnPlot(@NotNull AbstractPlot plot, Player player) {
-        if (plot.getWorld().isWorldLoaded() && plot.getWorld().getBukkitWorld().getPlayers().contains(player)) {
+        PlotWorld world = plot.getWorld();
+        if (world.isWorldLoaded() && world.getBukkitWorld().getPlayers().contains(player)) {
             Location playerLoc = player.getLocation();
-            ProtectedRegion protectedRegion = plot.getWorld().getProtectedRegion();
+            ProtectedRegion protectedRegion = world.getProtectedRegion();
             return protectedRegion == null || protectedRegion.contains(Vector3.toBlockPoint(playerLoc.getX(), playerLoc.getY(), playerLoc.getZ()));
         }
         return false;
     }
 
     public static @Nullable CuboidRegion getPlotAsRegion(@NotNull AbstractPlot plot) throws IOException {
-        Clipboard clipboard;
-        try (ClipboardReader reader = AbstractPlot.CLIPBOARD_FORMAT.getReader(new ByteArrayInputStream(plot.getInitialSchematicBytes()))) {
-            clipboard = reader.read();
-        }
-        if (clipboard == null) return null;
-
         // No longer supported!
         if (plot.getVersion() < 4) return null;
 
+        if (!plot.getWorld().loadWorld()) return null;
+        AbstractPlot.SchematicMetadata metadata = plot.getSchematicMetadata();
         return new CuboidRegion(
-                clipboard.getMinimumPoint().withY(plot.getWorld().getPlotHeight()),
-                clipboard.getMaximumPoint().withY(PlotWorld.MAX_WORLD_HEIGHT));
+                metadata.minimumPoint().withY(plot.getWorld().getPlotHeight()),
+                metadata.maximumPoint().withY(plot.getWorld().getBukkitWorld().getMaxHeight() - 1));
     }
 
     public static boolean isPlotWorld(@NotNull World world) {
         return DependencyManager.getMultiverseCore().getWorldManager().isLoadedWorld(world) && (PlotWorld.isOnePlotWorld(world.getName()) || PlotWorld.isCityPlotWorld(world.getName()));
     }
 
-    public static byte @Nullable [] getOutlinesSchematicBytes(@NotNull AbstractPlot plot, World world) throws IOException {
+    public static byte @Nullable [] getOutlinesSchematicBytes(@NotNull AbstractPlot plot, byte[] initialSchematic) throws IOException {
         Clipboard clipboard;
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(plot.getInitialSchematicBytes());
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(initialSchematic);
         try (ClipboardReader reader = AbstractPlot.CLIPBOARD_FORMAT.getReader(inputStream)) {
             clipboard = reader.read();
         }
@@ -218,7 +203,10 @@ public final class PlotUtils {
         );
 
         BlockArrayClipboard newClipboard = new BlockArrayClipboard(region);
-        newClipboard.setOrigin(BlockVector3.at(region.getCenter().x(), region.getMinimumPoint().y(), region.getCenter().z()));
+        // Match pasteSchematic's destination (schematic center), not the polygon centroid —
+        // otherwise the outline paste is shifted and leaves voids beside the plot.
+        BlockVector3 pasteOrigin = plot.getSchematicMetadata().center();
+        newClipboard.setOrigin(BlockVector3.at(pasteOrigin.x(), region.getMinimumPoint().y(), pasteOrigin.z()));
         ForwardExtentCopy copy = new ForwardExtentCopy(
                 clipboard,
                 region,
@@ -239,6 +227,11 @@ public final class PlotUtils {
         return Paths.get(PlotSystem.getPlugin().getDataFolder().getAbsolutePath(), "tutorial", "schematics");
     }
 
+    /**
+     * TODO: Adapt this for the new handler so ASEAN plot shifting works.
+     * @deprecated for new handler
+     */
+    @Deprecated
     public static boolean savePlotAsSchematic(@NotNull Plot plot) throws IOException, WorldEditException {
         if (plot.getVersion() < 4) {
             PlotSystem.getPlugin().getComponentLogger().error(text("Saving schematics of legacy plots is no longer allowed!"));
@@ -326,22 +319,15 @@ public final class PlotUtils {
     }
 
     public static @Nullable CompletableFuture<double[]> convertTerraToPlotXZ(@NotNull AbstractPlot plot, double[] terraCoords) throws IOException {
-        // Load plot outlines schematic as clipboard
-        Clipboard clipboard;
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(plot.getInitialSchematicBytes());
-        try (ClipboardReader reader = AbstractPlot.CLIPBOARD_FORMAT.getReader(inputStream)) {
-            clipboard = reader.read();
-        }
-        if (clipboard == null) return null;
-
         // Calculate min and max points of schematic
         CuboidRegion plotRegion = getPlotAsRegion(plot);
         if (plotRegion == null) return null;
+        AbstractPlot.SchematicMetadata metadata = plot.getSchematicMetadata();
 
         // Convert terra schematic coordinates into relative plot schematic coordinates
         double[] schematicCoords = {
-                terraCoords[0] - clipboard.getMinimumPoint().x(),
-                terraCoords[1] - clipboard.getMinimumPoint().z()
+                terraCoords[0] - metadata.minimumPoint().x(),
+                terraCoords[1] - metadata.minimumPoint().z()
         };
 
         // Add additional plot sizes to relative plot schematic coordinates
@@ -382,10 +368,11 @@ public final class PlotUtils {
         // ASEAN END
 
         // Return coordinates if they are in the schematic plot region
-        ProtectedRegion protectedPlotRegion = plot.getWorld().getProtectedRegion() != null
-                ? plot.getWorld().getProtectedRegion()
-                : plot.getWorld().getProtectedBuildRegion();
-        if (protectedPlotRegion.contains(BlockVector3.at((int) plotCoords[0], plot.getWorld().getPlotHeightCentered(), (int) plotCoords[1]))) {
+        PlotWorld world = plot.getWorld();
+        ProtectedRegion protectedPlotRegion = world.getProtectedRegion() != null
+                ? world.getProtectedRegion()
+                : world.getProtectedBuildRegion();
+        if (protectedPlotRegion.contains(BlockVector3.at((int) plotCoords[0], world.getPlotHeightCentered(), (int) plotCoords[1]))) {
             return CompletableFuture.completedFuture(plotCoords);
         }
 
@@ -512,123 +499,6 @@ public final class PlotUtils {
                 20L * 60 * interval));
     }
 
-    public static final class Actions {
-        private Actions() {}
-
-        public static void submitPlot(@NotNull Plot plot) {
-            plot.setStatus(Status.unreviewed);
-
-            if (plot.getWorld().isWorldLoaded()) {
-                for (Player player : plot.getWorld() instanceof OnePlotWorld ? plot.getWorld().getBukkitWorld().getPlayers() : ((CityPlotWorld) plot.getWorld()).getPlayersOnPlot()) {
-                    player.teleport(Utils.getSpawnLocation());
-                }
-            }
-
-            plot.getPermissions().removeBuilderPerms(plot.getPlotOwner().getUUID()).save();
-            if (!plot.getPlotMembers().isEmpty()) {
-                for (Builder builder : plot.getPlotMembers()) {
-                    plot.getPermissions().removeBuilderPerms(builder.getUUID());
-                }
-            }
-
-            DiscordUtil.getOpt(plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotSubmit);
-        }
-
-        public static void undoSubmit(@NotNull Plot plot) {
-            plot.setStatus(Status.unfinished);
-
-            plot.getPermissions().addBuilderPerms(plot.getPlotOwner().getUUID()).save();
-            if (!plot.getPlotMembers().isEmpty()) {
-                for (Builder builder : plot.getPlotMembers()) {
-                    plot.getPermissions().addBuilderPerms(builder.getUUID());
-                }
-            }
-        }
-
-        public static boolean abandonPlot(@NotNull AbstractPlot plot, @NotNull DiscordUtil.AbandonType type) {
-            try {
-                if (plot.getWorld() instanceof OnePlotWorld) {
-                    if (plot.getWorld().isWorldGenerated()) {
-                        if (plot.getWorld().isWorldLoaded()) {
-                            for (Player player : plot.getWorld().getBukkitWorld().getPlayers()) {
-                                player.teleport(Utils.getSpawnLocation());
-                            }
-                        }
-                        if (!plot.getWorld().deleteWorld()) PlotSystem.getPlugin().getComponentLogger().warn(text("Could not delete plot world " + plot.getWorld().getWorldName() + "!"));
-                    }
-                } else if (!(plot instanceof TutorialPlot)) {
-                    RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
-
-                    if (plot.getWorld().loadWorld()) {
-                        CityPlotWorld world = plot.getWorld();
-                        List<Player> playersToTeleport = new ArrayList<>(world.getPlayersOnPlot());
-
-                        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world.getBukkitWorld()));
-                        if (regionManager != null) {
-                            for (Builder builder : ((Plot) plot).getPlotMembers()) {
-                                ((Plot) plot).removePlotMember(builder);
-                            }
-
-                            if (regionManager.hasRegion(world.getRegionName())) regionManager.removeRegion(world.getRegionName());
-                            if (regionManager.hasRegion(world.getRegionName() + "-1")) regionManager.removeRegion(world.getRegionName() + "-1");
-
-                            AbstractPlotGenerator.pasteSchematic(null, getOutlinesSchematicBytes(plot, world.getBukkitWorld()), world, plot.getPlotType(), true, false);
-                        } else PlotSystem.getPlugin().getComponentLogger().warn(text("Region Manager is null!"));
-
-                        playersToTeleport.forEach(p -> p.teleport(Utils.getSpawnLocation()));
-                        if (plot.getWorld().isWorldLoaded()) plot.getWorld().unloadWorld(false);
-                    }
-                }
-                // Send to discord
-                DiscordUtil.getOpt(plot.getId()).ifPresent(event -> event.onPlotAbandon(type));
-            } catch (IOException | WorldEditException ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getId() + "!"), ex);
-                return false;
-            }
-
-            CompletableFuture.runAsync(() -> {
-                if (plot.getPlotType() == PlotType.TUTORIAL) return;
-                Plot dPlot = (Plot) plot;
-                boolean successful;
-                successful = DataProvider.REVIEW.removeAllReviewsOfPlot(dPlot.getId());
-
-                for (Builder builder : dPlot.getPlotMembers()) {
-                    if (!successful) break;
-                    successful = dPlot.removePlotMember(builder);
-                }
-
-                if (successful && plot.getPlotOwner() != null) {
-                    Cache.clearCache(plot.getPlotOwner().getUUID());
-                    successful = plot.getPlotOwner().setSlot(plot.getPlotOwner().getSlot(dPlot), -1);
-                }
-
-                if (successful) {
-                    successful = dPlot.setPlotOwner(null)
-                            && dPlot.setLastActivity(true)
-                            && dPlot.setStatus(Status.unclaimed)
-                            && dPlot.setPlotType(PlotType.LOCAL_INSPIRATION_MODE);
-                }
-
-                successful = successful && DataProvider.PLOT.setCompletedSchematic(plot.getId(), null);
-
-                if (!successful) PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getId() + "!"));
-            });
-            return true;
-        }
-
-        public static boolean deletePlot(Plot plot) {
-            if (abandonPlot(plot, DiscordUtil.AbandonType.COMMANDS)) {
-                CompletableFuture.runAsync(() -> {
-                    if (DataProvider.PLOT.deletePlot(plot.getId())) return;
-                    PlotSystem.getPlugin().getComponentLogger().warn(text("Failed to abandon plot with the ID " + plot.getId() + "!"));
-                });
-                return true;
-            }
-            PlotSystem.getPlugin().getComponentLogger().warn(text("Failed to abandon plot with the ID " + plot.getId() + "!"));
-            return false;
-        }
-    }
-
     public static final class Cache {
         private Cache() {}
 
@@ -696,35 +566,51 @@ public final class PlotUtils {
         public static void showOutlines() {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 Builder builder = Builder.byUUID(player.getUniqueId());
-
-                List<Plot> plots = Cache.getCachedInProgressPlots(builder);
-                BlockVector2 playerPos2D = BlockVector2.at(player.getLocation().getX(), player.getLocation().getZ());
-
+                List<Plot> plots = plotsForOutlines(builder);
                 if (plots.isEmpty()) continue;
 
+                BlockVector2 playerPos2D = BlockVector2.at(player.getLocation().getX(), player.getLocation().getZ());
                 for (Plot plot : plots) {
-                    if ((!plot.getWorld().getWorldName().equals(player.getWorld().getName())) ||
-                            (!plot.getPlotOwner().getPlotType().hasEnvironment() || plot.getVersion() <= 2)) {
+                    if (!plot.getWorld().getWorldName().equalsIgnoreCase(player.getWorld().getName())) {
+                        continue;
+                    }
+                    // Focus-mode / legacy plots have no environment outlines to render
+                    if (!plot.getPlotType().hasEnvironment() || plot.getVersion() <= 2) {
                         continue;
                     }
 
                     List<BlockVector2> points = plot.getBlockOutline();
-
-                    for (BlockVector2 point : points)
-                        if (point.distanceSq(playerPos2D) < 50 * 50) {
-                            if (!particleAPIEnabled) {
-                                player.spawnParticle(Particle.FLAME, point.x(), player.getLocation().getY() + 1, point.z(), 1, 0.0, 0.0, 0.0, 0);
-                            } else {
-                                Location loc = new Location(player.getWorld(), point.x(), player.getLocation().getY() + 1, point.z());
-                                // create a particle packet
-                                Object packet = particles.FLAME().packet(true, loc);
-
-                                // send this packet to player
-                                particles.sendPacket(player, packet);
-                            }
+                    for (BlockVector2 point : points) {
+                        if (point.distanceSq(playerPos2D) >= 50 * 50) continue;
+                        if (!particleAPIEnabled) {
+                            player.spawnParticle(Particle.FLAME, point.x(), player.getLocation().getY() + 1, point.z(), 1, 0.0, 0.0, 0.0, 0);
+                            continue;
                         }
+                        Location loc = new Location(player.getWorld(), point.x(), player.getLocation().getY() + 1, point.z());
+                        Object packet = particles.FLAME().packet(true, loc);
+                        particles.sendPacket(player, packet);
+                    }
                 }
             }
+        }
+
+        /**
+         * Unfinished plots the player owns/is a member of (building),
+         * plus the unreviewed plot they are standing on (reviewing).
+         */
+        private static List<Plot> plotsForOutlines(@NotNull Builder builder) {
+            List<Plot> plots = new ArrayList<>(Cache.getCachedInProgressPlots(builder));
+
+            AbstractPlot current = getCurrentPlot(builder, Status.unreviewed);
+            if (!(current instanceof Plot unreviewedPlot)) {
+                return plots;
+            }
+
+            boolean alreadyIncluded = plots.stream().anyMatch(plot -> plot.getId() == unreviewedPlot.getId());
+            if (!alreadyIncluded) {
+                plots.add(unreviewedPlot);
+            }
+            return plots;
         }
     }
 
@@ -733,72 +619,106 @@ public final class PlotUtils {
 
         public static void sendLinkMessages(AbstractPlot plot, Player player) {
             Bukkit.getScheduler().runTaskAsynchronously(PlotSystem.getPlugin(), () -> {
-                Component[] tc = new Component[4];
-
-                String shortLinkGoogleMaps = null;
-                String shortLinkGoogleEarth = null;
-                String shortLinkOSM = null;
-                String shortLinkAppleLookAround = null;
-                String googleMaps = " Google Maps ";
-                String googleEarthWeb = " Google Earth Web ";
-                String openStreetMap = " Open Street Map ";
-                String appleLookAround = " Apple Maps Look Around ";
+                List<Component> linkMessages;
                 try {
-                    if (PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.SHORTLINK_ENABLE)) {
-                        shortLinkGoogleMaps = ShortLink.generateShortLink(plot.getGoogleMapsLink());
-                        tc[0] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(googleMaps, GREEN), text(shortLinkGoogleMaps, GREEN)));
-                        shortLinkGoogleEarth = ShortLink.generateShortLink(plot.getGoogleEarthLink());
-                        tc[1] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(googleEarthWeb, GREEN), text(shortLinkGoogleEarth, GREEN)));
-                        shortLinkOSM = ShortLink.generateShortLink(plot.getOSMMapsLink());
-                        tc[2] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(openStreetMap, GREEN), text(shortLinkOSM, GREEN)));
-                        shortLinkAppleLookAround = ShortLink.generateShortLink(plot.getAppleLookAroundLink());
-                        tc[3] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK, GRAY, text(appleLookAround, GREEN), text(shortLinkAppleLookAround, GREEN)));
-                    } else {
-                        tc[0] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(googleMaps, GREEN)));
-                        tc[1] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(googleEarthWeb, GREEN)));
-                        tc[2] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(openStreetMap, GREEN)));
-                        tc[3] = text("» ", DARK_GRAY).append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK, GRAY, text(appleLookAround, GREEN)));
+                    BlockVector3 mcCoordinates = plot.getCoordinates();
+                    double[] geoCoordinates = CoordinateConversion.convertToGeo(mcCoordinates.x(), mcCoordinates.z());
+
+                    MapLinksConfig mapLinksConfig = getMapLinksConfigFromPlugin();
+                    MapLinks mapLinks = mapLinksConfig == null ? new MapLinks(geoCoordinates[1], geoCoordinates[0]) : new MapLinks(geoCoordinates[1], geoCoordinates[0], mapLinksConfig);
+
+                    if (mapLinks.getAllLinks().isEmpty()) {
+                        PlotSystem.getPlugin().getComponentLogger().warn(text("No map links are enabled for plot #" + plot.getId()));
+                        return;
                     }
 
-                    tc[0] = tc[0].clickEvent(ClickEvent.openUrl((shortLinkGoogleMaps != null) ? shortLinkGoogleMaps : plot.getGoogleMapsLink()));
-                    tc[1] = tc[1].clickEvent(ClickEvent.openUrl((shortLinkGoogleEarth != null) ? shortLinkGoogleEarth : plot.getGoogleEarthLink()));
-                    tc[2] = tc[2].clickEvent(ClickEvent.openUrl((shortLinkOSM != null) ? shortLinkOSM : plot.getOSMMapsLink()));
-                    tc[3] = tc[3].clickEvent(ClickEvent.openUrl((shortLinkAppleLookAround != null) ? shortLinkAppleLookAround : plot.getAppleLookAroundLink()));
-                } catch (IOException | URISyntaxException ex) {
-                    PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while creating short link!"), ex);
+                    boolean shortLinksEnabled = PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.SHORTLINK_ENABLE);
+                    linkMessages = new ArrayList<>(mapLinks.getAllLinks().size());
+                    for (MapLink link : mapLinks.getAllLinks()) {
+                        linkMessages.add(buildMapLinkMessage(player, link.name(), link.url(), shortLinksEnabled));
+                    }
+                } catch (IOException | URISyntaxException | NumberFormatException | NullPointerException | OutOfProjectionBoundsException ex) {
+                    PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while creating map links!"), ex);
+                    return;
                 }
-
-                tc[0] = tc[0].hoverEvent(text(googleMaps));
-                tc[1] = tc[1].hoverEvent(text(googleEarthWeb));
-                tc[2] = tc[2].hoverEvent(text(openStreetMap));
-                tc[3] = tc[3].hoverEvent(text(appleLookAround));
 
                 // Temporary fix for bedrock players
                 Component coords = null;
                 try {
-                    String[] coordsSplit = plot.getGeoCoordinates().split(",");
-                    double lat = Double.parseDouble(coordsSplit[0]);
-                    double lon = Double.parseDouble(coordsSplit[1]);
+                    BlockVector3 mcCoordinates = plot.getCoordinates();
+                    double[] geoCoordinates = CoordinateConversion.convertToGeo(mcCoordinates.x(), mcCoordinates.z());
                     DecimalFormat df = new DecimalFormat("##.#####");
                     df.setRoundingMode(RoundingMode.FLOOR);
-                    String formattedCoords = df.format(lat) + ", " + df.format(lon);
+                    String formattedCoords = df.format(geoCoordinates[1]) + ", " + df.format(geoCoordinates[0]);
                     coords = text(formattedCoords, GREEN)
                             .clickEvent(ClickEvent.copyToClipboard(formattedCoords))
                             .hoverEvent(text(LangUtil.getInstance().get(player, LangPaths.Note.Action.CLICK_TO_COPY_TO_CLIPBOARD), GRAY));
-                } catch (IOException ex) {
+                } catch (IOException | OutOfProjectionBoundsException ex) {
                     PlotSystem.getPlugin().getComponentLogger().error(text(ex.getMessage()), ex);
                 }
 
                 player.sendMessage(text(MSG_LINE, DARK_GRAY));
                 if (coords != null) player.sendMessage(text("Coords: ", GRAY).append(coords));
-                player.sendMessage(tc[0]);
-                player.sendMessage(tc[1]);
-                player.sendMessage(tc[2]);
-                player.sendMessage(tc[3]);
+                for (Component linkMessage : linkMessages) {
+                    player.sendMessage(linkMessage);
+                }
                 player.sendMessage(text(MSG_LINE, DARK_GRAY));
 
-                if (plot instanceof Plot p) sendGroupTipMessage(p, player);
+                if (plot instanceof Plot p) {
+                    sendGroupTipMessage(p, player);
+                    sendViewModeTipMessage(p, player);
+                }
             });
+        }
+
+        private static @NotNull Component buildMapLinkMessage(@NotNull Player player, @NotNull String providerName, @NotNull String targetUrl,
+                                                              boolean shortLinksEnabled) throws IOException, URISyntaxException {
+            String providerLabel = " " + providerName + " ";
+            Component message;
+            String clickUrl = targetUrl;
+
+            if (shortLinksEnabled) {
+                clickUrl = ShortLink.generateShortLink(targetUrl);
+                message = text("» ", DARK_GRAY)
+                        .append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK_WITH_SHORTLINK,
+                                GRAY, text(providerLabel, GREEN), text(clickUrl, GREEN)));
+            } else {
+                message = text("» ", DARK_GRAY)
+                        .append(LangUtil.getInstance().getComponent(player.getUniqueId(), LangPaths.Note.Action.CLICK_TO_OPEN_LINK,
+                                GRAY, text(providerLabel, GREEN)));
+            }
+
+            return message
+                    .clickEvent(ClickEvent.openUrl(clickUrl))
+                    .hoverEvent(text(providerLabel));
+        }
+
+        private static @Nullable MapLinksConfig getMapLinksConfigFromPlugin() {
+            ConfigurationSection linksRoot = PlotSystem.getPlugin().getConfig().getConfigurationSection(ConfigPaths.MAP_LINKS);
+            if (linksRoot == null) {
+                return null;
+            }
+
+            ConfigurationSection linksSection = linksRoot.getConfigurationSection("links");
+            if (linksSection == null) {
+                return null;
+            }
+
+            Map<String, MapLinkEntryConfig> links = new LinkedHashMap<>();
+            for (String key : linksSection.getKeys(false)) {
+                ConfigurationSection entry = linksSection.getConfigurationSection(key);
+                if (entry == null) {
+                    continue;
+                }
+
+                String id = entry.getString("id", key);
+                String name = entry.getString("name");
+                String template = entry.getString("url-template", entry.getString("urlTemplate"));
+                Boolean enabled = entry.isSet("enabled") ? entry.getBoolean("enabled") : null;
+                links.put(key, new MapLinkEntryConfig(id, name, template, enabled));
+            }
+
+            return links.isEmpty() ? null : new MapLinksConfig(links);
         }
 
         public static void sendGroupTipMessage(@NotNull Plot plot, Player player) {
@@ -814,16 +734,52 @@ public final class PlotUtils {
             }
         }
 
+        /**
+         * Nudges newcomers toward Companion → Settings → view modes while they still have no accepted plots.
+         */
+        public static void sendViewModeTipMessage(@NotNull Plot plot, @NotNull Player player) {
+            Builder builder = Builder.byUUID(player.getUniqueId());
+            boolean isParticipant = plot.getPlotOwner().getUUID().equals(builder.getUUID())
+                    || plot.getPlotMembers().stream().anyMatch(member -> member.getUUID().equals(builder.getUUID()));
+            if (!isParticipant || hasCompletedPlots(builder)) return;
+
+            player.sendMessage(text("» ", DARK_GRAY)
+                    .append(text(LangUtil.getInstance().get(player, LangPaths.Message.Info.VIEW_MODE_TIP), GREEN)));
+            player.sendMessage(text(LangUtil.getInstance().get(player, LangPaths.Note.Action.CLICK_TO_CHANGE_VIEW_MODE), GOLD)
+                    .clickEvent(ClickEvent.runCommand("/companion"))
+                    .hoverEvent(text(LangUtil.getInstance().get(player, LangPaths.MenuTitle.SETTINGS))));
+            player.sendMessage(text(MSG_LINE, DARK_GRAY));
+        }
+
+        /**
+         * Sent after a builder's first accepted plot so they know Medium/Hard are available via Companion.
+         */
+        public static void sendDifficultyUnlockedMessage(@NotNull Player player) {
+            player.sendMessage(text(MSG_LINE, DARK_GRAY));
+            player.sendMessage(text("» ", DARK_GRAY)
+                    .append(text(LangUtil.getInstance().get(player, LangPaths.Message.Info.DIFFICULTY_UNLOCKED), GREEN)));
+            player.sendMessage(text(LangUtil.getInstance().get(player, LangPaths.Note.Action.CLICK_TO_SELECT_DIFFICULTY), GOLD)
+                    .clickEvent(ClickEvent.runCommand("/companion"))
+                    .hoverEvent(text(LangUtil.getInstance().get(player, LangPaths.MenuTitle.PLOT_DIFFICULTY))));
+            player.sendMessage(text(MSG_LINE, DARK_GRAY));
+        }
+
         public static void sendFeedbackMessage(@NotNull List<ReviewNotification> notifications, @NotNull Player player) {
             player.sendMessage(text(MSG_LINE, DARK_GRAY));
+            boolean mayHaveUnlockedDifficulty = false;
             for (ReviewNotification notification : notifications) {
                 PlotReview review = DataProvider.REVIEW.getReview(notification.reviewId()).orElseThrow();
-                player.sendMessage(text("» ", DARK_GRAY).append(text(LangUtil.getInstance().get(player, LangPaths.Message.Info.REVIEWED_PLOT, String.valueOf(review.getPlot().getId())), GREEN)));
+                Plot reviewedPlot = review.getPlot();
+                player.sendMessage(text("» ", DARK_GRAY).append(text(LangUtil.getInstance().get(player, LangPaths.Message.Info.REVIEWED_PLOT, String.valueOf(reviewedPlot.getId())), GREEN)));
 
                 Component tc = text(LangUtil.getInstance().get(player, LangPaths.Note.Action.CLICK_TO_SHOW_FEEDBACK), GOLD)
-                        .clickEvent(ClickEvent.runCommand("/plot feedback " + review.getPlot().getId()))
+                        .clickEvent(ClickEvent.runCommand("/plot feedback " + reviewedPlot.getId()))
                         .hoverEvent(text(LangUtil.getInstance().get(player, LangPaths.Plot.PLOT_NAME) + " " + LangUtil.getInstance().get(player, LangPaths.Review.FEEDBACK)));
                 player.sendMessage(tc);
+
+                if (reviewedPlot.getStatus() == Status.completed) {
+                    mayHaveUnlockedDifficulty = true;
+                }
 
                 DataProvider.REVIEW.removeReviewNotification(notification.reviewId(), notification.uuid());
 
@@ -833,6 +789,22 @@ public final class PlotUtils {
             }
             player.sendMessage(text(MSG_LINE, DARK_GRAY));
             player.playSound(player.getLocation(), Utils.SoundUtils.FINISH_PLOT_SOUND, 1, 1);
+
+            // Offline builders receive review notices on join after the plot is already completed.
+            if (mayHaveUnlockedDifficulty && countDistinctCompletedPlots(Builder.byUUID(player.getUniqueId())) == 1) {
+                sendDifficultyUnlockedMessage(player);
+            }
+        }
+
+        private static boolean hasCompletedPlots(@NotNull Builder builder) {
+            return countDistinctCompletedPlots(builder) > 0;
+        }
+
+        private static long countDistinctCompletedPlots(@NotNull Builder builder) {
+            return DataProvider.PLOT.getPlots(builder, Status.completed).stream()
+                    .map(Plot::getId)
+                    .distinct()
+                    .count();
         }
 
         public static void sendUnfinishedPlotReminderMessage(@NotNull List<Plot> plots, @NotNull Player player) {

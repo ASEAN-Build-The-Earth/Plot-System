@@ -8,8 +8,8 @@ import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.AbstractPlot;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
+import com.alpsbte.plotsystem.core.system.plot.PlotHandler;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
-import com.alpsbte.plotsystem.utils.DiscordUtil;
 import com.alpsbte.plotsystem.utils.Utils;
 import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
@@ -70,8 +70,7 @@ public class CMD_Plot_UndoSubmit extends SubCommand {
             }
 
             Bukkit.getScheduler().runTask(PlotSystem.getPlugin(), () -> {
-                PlotUtils.Actions.undoSubmit(plot);
-                DiscordUtil.getOpt(plot.getId()).ifPresent(DiscordUtil.PlotEventAction::onPlotUndoSubmit);
+                PlotHandler.undoSubmit(plot);
 
                 sender.sendMessage(Utils.ChatUtils.getInfoFormat(langUtil.get(sender, LangPaths.Message.Info.UNDID_SUBMISSION, plot.getId() + "")));
                 player.playSound(player.getLocation(), Utils.SoundUtils.FINISH_PLOT_SOUND, 1, 1);
